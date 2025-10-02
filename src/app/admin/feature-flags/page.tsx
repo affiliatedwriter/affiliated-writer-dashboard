@@ -50,7 +50,6 @@ export default function FeatureFlagsPage() {
       alert(e.message || "Failed");
     }
   };
-
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-xl font-semibold">Feature Flags</h2>
