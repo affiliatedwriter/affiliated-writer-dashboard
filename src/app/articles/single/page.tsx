@@ -1,23 +1,21 @@
-// File: affiliated-writer/affiliated-writer-dashboard/src/app/articles/single/page.tsx
+// File: src/app/articles/single/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import CtaPreview from "@/components/CtaPreview";
 import AmazonPicker from "@/components/AmazonPicker";
-import { apiGet, apiPost } from "@/lib/api";
+import api from "@/lib/api";
 
 /* ---------- Types ---------- */
 type SlugMode = "keyword" | "title";
 type PublishMode = "editor" | "wordpress" | "blogger";
 type PublishStatus = "draft" | "publish" | "schedule";
 
-type AmazonApi = { id: number; title: string; partnerTag: string; country: string };
-
 type WpSite = {
   id: number;
   title: string;
-  base_url: string;
+  base_url?: string | null;
   default_category_id: number | null;
   default_status: string;
 };
@@ -52,7 +50,7 @@ export default function AmazonSinglePage() {
   const [apiId, setApiId] = useState<number | "">("");
   const [fallbackTag, setFallbackTag] = useState<string>("");
   const [fallbackCountry, setFallbackCountry] = useState<string>(
-    "amazon.com - United States (US)",
+    "amazon.com - United States (US)"
   );
 
   /* ========= Publishing ========= */
@@ -75,8 +73,8 @@ export default function AmazonSinglePage() {
   useEffect(() => {
     (async () => {
       try {
-        const wp = await apiGet<{ data?: WpSite[]; items?: WpSite[]; rows?: WpSite[] }>(
-          "/api/publish/wordpress",
+        const wp = await api.get<{ data?: WpSite[]; items?: WpSite[]; rows?: WpSite[] }>(
+          "/api/publish/wordpress"
         );
         const list = (wp?.data ?? wp?.items ?? wp?.rows ?? []) as WpSite[];
         setWpSites(Array.isArray(list) ? list : []);
@@ -84,8 +82,8 @@ export default function AmazonSinglePage() {
         setWpSites([]);
       }
       try {
-        const bl = await apiGet<{ data?: BloggerBlog[]; items?: BloggerBlog[] }>(
-          "/api/publish/blogger",
+        const bl = await api.get<{ data?: BloggerBlog[]; items?: BloggerBlog[] }>(
+          "/api/publish/blogger"
         );
         const list = (bl?.data ?? bl?.items ?? []) as BloggerBlog[];
         setBlogs(Array.isArray(list) ? list : []);
@@ -108,10 +106,10 @@ export default function AmazonSinglePage() {
     }
     (async () => {
       try {
-        const res = await apiGet<{ data?: WpCategory[]; items?: WpCategory[] }>(
-          `/api/publish/wordpress/${wid}/categories`,
+        const res = await api.get<{ categories?: WpCategory[]; data?: WpCategory[]; items?: WpCategory[] }>(
+          `/api/publish/wp-categories/${wid}`
         );
-        const cats = (res?.data ?? res?.items ?? []) as WpCategory[];
+        const cats = (res?.categories ?? res?.data ?? res?.items ?? []) as WpCategory[];
         setWpCats(Array.isArray(cats) ? cats : []);
         // prefill with site's default category, if any
         const site = wpSites.find((w) => w.id === wid);
@@ -189,9 +187,8 @@ export default function AmazonSinglePage() {
           publish,
         },
       };
-      await apiPost("/api/jobs/start", payload);
+      await api.post("/api/jobs/start", payload);
       alert("Job created!");
-      // keep inputs so user can repeat
     } catch (e: any) {
       setErr(e?.message || "Failed to create job");
     } finally {
@@ -312,8 +309,7 @@ export default function AmazonSinglePage() {
                   </select>
                 </div>
                 <div className="md:col-span-2 text-xs text-amber-600">
-                  Without Amazon API, system will use tracking ID only and charge{" "}
-                  <b>+100 credits</b>.
+                  Without Amazon API, system will use tracking ID only and charge <b>+100 credits</b>.
                 </div>
               </div>
             )}
@@ -377,8 +373,7 @@ export default function AmazonSinglePage() {
                         ...p,
                         wordpress: {
                           ...(p.wordpress || { websiteId: null, status: "draft" }),
-                          categoryId:
-                            e.target.value === "" ? null : Number(e.target.value),
+                          categoryId: e.target.value === "" ? null : Number(e.target.value),
                         },
                       }))
                     }
@@ -418,9 +413,7 @@ export default function AmazonSinglePage() {
                         onChange={(e) =>
                           setPublish((p) => ({
                             ...p,
-                            schedule: {
-                              everyHours: Math.max(1, Number(e.target.value || 6)),
-                            },
+                            schedule: { everyHours: Math.max(1, Number(e.target.value || 6)) },
                           }))
                         }
                       />
@@ -484,9 +477,7 @@ export default function AmazonSinglePage() {
                         onChange={(e) =>
                           setPublish((p) => ({
                             ...p,
-                            schedule: {
-                              everyHours: Math.max(1, Number(e.target.value || 6)),
-                            },
+                            schedule: { everyHours: Math.max(1, Number(e.target.value || 6)) },
                           }))
                         }
                       />

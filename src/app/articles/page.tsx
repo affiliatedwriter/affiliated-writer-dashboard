@@ -1,8 +1,8 @@
-// File: affiliated-writer/affiliated-writer-dashboard/src/app/articles/page.tsx
+// File: src/app/articles/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api";
+import api from "@/lib/api";
 
 type Article = {
   id: number;
@@ -24,7 +24,7 @@ export default function ArticlesPage() {
     setLoading(true);
     try {
       // Authorization header auto-attaches from api.ts interceptor
-      const resp = await apiGet<ListResp>("/api/articles");
+      const resp = await api.get<ListResp>("/api/articles");
       const list = Array.isArray(resp) ? resp : resp.articles ?? [];
       setRows(list);
     } catch (e: any) {
@@ -66,10 +66,10 @@ export default function ArticlesPage() {
         ) : (
           rows.map((a) => (
             <div key={a.id} className="grid grid-cols-4 gap-4 p-3">
-              <div>{a.title}</div>
+              <div className="truncate">{a.title}</div>
               <div>{a.platform}</div>
               <div>{a.status}</div>
-              <div>{a.updated_at}</div>
+              <div className="text-sm text-gray-600">{a.updated_at}</div>
             </div>
           ))
         )}

@@ -1,23 +1,22 @@
-// File: affiliated-writer/affiliated-writer-dashboard/src/app/articles/manual/page.tsx
+// File: src/app/articles/manual/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import CtaPreview from "@/components/CtaPreview";
 import AmazonPicker from "@/components/AmazonPicker";
-import { apiGet, apiPost } from "@/lib/api";
+import api from "@/lib/api";
 
 /* ---------- Types ---------- */
 type SlugMode = "keyword" | "title";
 type Availability = "any" | "in_stock";
 
-type AmazonApi = { id: number; title: string; partnerTag: string; country: string };
 type Product = { asin: string; title: string; image: string };
 
 type WpSite = {
   id: number;
   title: string;
-  base_url: string;
+  base_url?: string | null;
   default_category_id: number | null;
   default_status: string;
 };
@@ -64,7 +63,7 @@ export default function AmazonManualPage() {
   const [apiId, setApiId] = useState<number | "">("");
   const [fallbackTag, setFallbackTag] = useState<string>("");
   const [fallbackCountry, setFallbackCountry] = useState<string>(
-    "amazon.com - United States (US)",
+    "amazon.com - United States (US)"
   );
 
   /* ========= Optional extra filters (simple) ========= */
@@ -86,23 +85,22 @@ export default function AmazonManualPage() {
   const [busy, setBusy] = useState<boolean>(false);
   const [err, setErr] = useState<string>("");
 
-  /* ---------- Load saved destinations & (optionally) amazon apis ---------- */
+  /* ---------- Load saved destinations ---------- */
   useEffect(() => {
     (async () => {
-      // WordPress sites
       try {
-        const wp = await apiGet<{ data?: WpSite[]; items?: WpSite[]; rows?: WpSite[] }>(
-          "/api/publish/wordpress",
+        const wp = await api.get<{ data?: WpSite[]; items?: WpSite[]; rows?: WpSite[] }>(
+          "/api/publish/wordpress"
         );
         const list = (wp?.data ?? wp?.items ?? wp?.rows ?? []) as WpSite[];
         setWpSites(Array.isArray(list) ? list : []);
       } catch {
         setWpSites([]);
       }
-      // Blogger blogs
+
       try {
-        const bl = await apiGet<{ data?: BloggerBlog[]; items?: BloggerBlog[] }>(
-          "/api/publish/blogger",
+        const bl = await api.get<{ data?: BloggerBlog[]; items?: BloggerBlog[] }>(
+          "/api/publish/blogger"
         );
         const list = (bl?.data ?? bl?.items ?? []) as BloggerBlog[];
         setBlogs(Array.isArray(list) ? list : []);
@@ -125,12 +123,12 @@ export default function AmazonManualPage() {
     }
     (async () => {
       try {
-        const res = await apiGet<{ data?: WpCategory[]; items?: WpCategory[] }>(
-          `/api/publish/wordpress/${wid}/categories`,
+        // backend route we added earlier
+        const res = await api.get<{ categories?: WpCategory[]; data?: WpCategory[]; items?: WpCategory[] }>(
+          `/api/publish/wp-categories/${wid}`
         );
-        const cats = (res?.data ?? res?.items ?? []) as WpCategory[];
+        const cats = (res?.categories ?? res?.data ?? res?.items ?? []) as WpCategory[];
         setWpCats(Array.isArray(cats) ? cats : []);
-        // prefill site default category if available
         const site = wpSites.find((w) => w.id === wid);
         setPublish((p) => ({
           ...p,
@@ -152,7 +150,7 @@ export default function AmazonManualPage() {
     setSelected((prev) =>
       prev.some((x) => x.asin === p.asin)
         ? prev.filter((x) => x.asin !== p.asin)
-        : [...prev, p],
+        : [...prev, p]
     );
 
   const validate = (): string | null => {
@@ -184,22 +182,13 @@ export default function AmazonManualPage() {
     return null;
   };
 
-  const setWpStatus = (status: PublishStatus) =>
-    setPublish((p) => ({
-      ...p,
-      wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null }), status },
-    }));
-
-  const setBlogStatus = (status: PublishStatus) =>
-    setPublish((p) => ({
-      ...p,
-      blogger: { ...(p.blogger || { blogId: null }), status },
-    }));
-
   /* ---------- Search products ---------- */
   const searchProducts = async () => {
     setErr("");
-    if (!keyword.trim()) return alert("Enter keyword or ASIN");
+    if (!keyword.trim()) {
+      alert("Enter keyword or ASIN");
+      return;
+    }
 
     try {
       const body: any = {
@@ -212,15 +201,15 @@ export default function AmazonManualPage() {
 
       let data: any;
       try {
-        data = await apiPost("/api/amazon/search", body);
+        data = await api.post("/api/amazon/search", body);
       } catch {
         const params = new URLSearchParams({ q: keyword.trim(), availability });
-        if (useSavedApi && apiId) params.set("api_id", String(apiId));
+        if (useSavedApi && apiId !== "") params.set("api_id", String(apiId));
         if (!useSavedApi && fallbackTag) {
           params.set("tracking_id", fallbackTag);
           params.set("country", fallbackCountry);
         }
-        data = await apiGet(`/api/amazon/search?${params.toString()}`);
+        data = await api.get(`/api/amazon/search?${params.toString()}`);
       }
 
       const list = Array.isArray(data) ? data : data?.items ?? data?.products ?? [];
@@ -229,7 +218,7 @@ export default function AmazonManualPage() {
           asin: p.asin ?? p.ASIN ?? p.id,
           title: p.title ?? p.name ?? "",
           image: p.image ?? p.thumbnail ?? p.img ?? "",
-        })),
+        }))
       );
     } catch (e: any) {
       setErr(e?.message || "Search failed");
@@ -242,7 +231,7 @@ export default function AmazonManualPage() {
     setErr("");
     const v = validate();
     if (v) {
-      setError(v);
+      setErr(v);
       return;
     }
 
@@ -268,7 +257,7 @@ export default function AmazonManualPage() {
         },
       };
 
-      await apiPost("/api/jobs/start", payload);
+      await api.post("/api/jobs/start", payload);
       alert("Job created!");
       setSelected([]);
     } catch (e: any) {
@@ -277,8 +266,6 @@ export default function AmazonManualPage() {
       setBusy(false);
     }
   };
-
-  const setError = (m: string) => setErr(m);
 
   /* ---------- UI ---------- */
   return (
@@ -511,7 +498,10 @@ export default function AmazonManualPage() {
                     <select
                       className="w-full rounded-lg border px-3 py-2"
                       value={publish.wordpress?.status ?? "draft"}
-                      onChange={(e) => setWpStatus(e.target.value as PublishStatus)}
+                      onChange={(e) => setPublish((p) => ({
+                        ...p,
+                        wordpress: { ...(p.wordpress || {}), status: e.target.value as PublishStatus }
+                      }))}
                     >
                       <option value="draft">Draft</option>
                       <option value="publish">Publish</option>
@@ -577,7 +567,12 @@ export default function AmazonManualPage() {
                     <select
                       className="w-full rounded-lg border px-3 py-2"
                       value={publish.blogger?.status ?? "draft"}
-                      onChange={(e) => setBlogStatus(e.target.value as PublishStatus)}
+                      onChange={(e) =>
+                        setPublish((p) => ({
+                          ...p,
+                          blogger: { ...(p.blogger || {}), status: e.target.value as PublishStatus },
+                        }))
+                      }
                     >
                       <option value="draft">Draft</option>
                       <option value="publish">Publish</option>

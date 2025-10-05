@@ -1,10 +1,10 @@
-// File: affiliated-writer/affiliated-writer-dashboard/src/app/articles/bulk/page.tsx
+// File: src/app/articles/bulk/page.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination, { PublishPayload } from "@/components/PublishingDestination";
-import { apiPost } from "@/lib/api";
+import api from "@/lib/api";
 
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
@@ -27,7 +27,7 @@ export default function InfoArticlePage() {
   /* ================= Publishing ================= */
   const [publish, setPublish] = useState<PublishPayload>({
     platform: "editor", // "wordpress" | "blogger" | "editor"
-    status: "draft",    // "draft" | "publish" | "schedule" (schedule UI comes from component)
+    status: "draft",    // "draft" | "publish" | "schedule"
   });
 
   /* ================= UI ================= */
@@ -69,7 +69,7 @@ export default function InfoArticlePage() {
     try {
       setBusy(true);
 
-      // Backend-friendly payload (matches JobsController signature used elsewhere)
+      // Backend-friendly payload
       const payload = {
         type: "info_bulk",
         model,
@@ -87,7 +87,7 @@ export default function InfoArticlePage() {
         },
       };
 
-      await apiPost("/api/jobs/start", payload);
+      await api.post("/api/jobs/start", payload);
       alert("Job created!");
     } catch (e: any) {
       setErr(e?.message || "Failed to create job");
@@ -125,7 +125,9 @@ export default function InfoArticlePage() {
               />
               <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
                 <span>You can paste 500–1000+ lines; each line becomes one article.</span>
-                <span>{count} keyword{count === 1 ? "" : "s"}</span>
+                <span>
+                  {count} keyword{count === 1 ? "" : "s"}
+                </span>
               </div>
             </div>
 

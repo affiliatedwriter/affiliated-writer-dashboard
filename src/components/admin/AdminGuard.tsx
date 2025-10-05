@@ -1,34 +1,68 @@
+// File: src/components/AuthGuard.tsx
 "use client";
+
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 type AuthGuardProps = {
   children: React.ReactNode;
-  mode?: "user" | "admin"; // ডিফল্ট user
+  /** ডিফল্ট: "user" — admin পেজে দিলে "admin" পাঠাও */
+  mode?: "user" | "admin";
+  /** টোকেন/রোল না পেলে কোথায় পাঠাবে (ডিফল্ট: /login) */
+  redirectTo?: string;
 };
 
-export default function AuthGuard({ children, mode = "user" }: AuthGuardProps) {
+export default function AuthGuard({
+  children,
+  mode = "user",
+  redirectTo = "/login",
+}: AuthGuardProps) {
   const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
+  const pathname = usePathname();
+  const [authorized, setAuthorized] = useState<null | boolean>(null); // null = unknown/loading
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
+    // SSR-সেফ: window/localStorage গার্ড
+    if (typeof window === "undefined") return;
 
-    if (!token) {
-      router.push("/login");
-      return;
+    try {
+      const token = localStorage.getItem("token");
+      const role = localStorage.getItem("role"); // "admin" দিলে admin গার্ড পাস করবে
+
+      // not logged in
+      if (!token) {
+        router.replace(`${redirectTo}?next=${encodeURIComponent(pathname)}`);
+        setAuthorized(false);
+        return;
+      }
+
+      // role check (only for admin mode)
+      if (mode === "admin" && role !== "admin") {
+        router.replace(`${redirectTo}?next=${encodeURIComponent(pathname)}`);
+        setAuthorized(false);
+        return;
+      }
+
+      setAuthorized(true);
+    } catch {
+      router.replace(`${redirectTo}?next=${encodeURIComponent(pathname)}`);
+      setAuthorized(false);
     }
+  }, [mode, redirectTo, pathname, router]);
 
-    if (mode === "admin" && role !== "admin") {
-      router.push("/login");
-      return;
-    }
+  // লোডিং/রিডাইরেক্টের সময়ে হালকা স্কেলেটন/স্পিনার
+  if (authorized === null) {
+    return (
+      <div className="min-h-[60vh] grid place-items-center">
+        <div className="flex items-center gap-3 text-gray-600">
+          <span className="animate-spin inline-block h-4 w-4 border-2 border-gray-300 border-t-transparent rounded-full" />
+          <span>Checking permission…</span>
+        </div>
+      </div>
+    );
+  }
 
-    setAuthorized(true);
-  }, [router, mode]);
-
-  if (!authorized) return null; // লোডিং/রিডাইরেক্ট হওয়ার সময় কিছু না দেখানো
+  if (authorized === false) return null;
 
   return <>{children}</>;
 }

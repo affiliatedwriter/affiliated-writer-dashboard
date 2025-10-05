@@ -1,19 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  async rewrites() {
-    // এই অংশটি নিশ্চিত করে যে '/api/...' দিয়ে শুরু হওয়া সব রিকোয়েস্ট
-    // আপনার ব্যাকএন্ড সার্ভারে চলে যাবে।
+  async redirects() {
     return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_BASE}/api/:path*`,
-      },
+      { source: '/settings', destination: '/admin/settings', permanent: false },
+      { source: '/prompt-templates', destination: '/admin/prompt-templates', permanent: false },
+      { source: '/feature-flags', destination: '/admin/feature-flags', permanent: false },
+      { source: '/credits-manager', destination: '/admin/credits', permanent: false },
     ];
   },
 };

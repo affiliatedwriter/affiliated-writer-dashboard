@@ -1,8 +1,18 @@
+// File: src/app/dashboard/page.tsx
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { isAuthed } from "@/lib/auth";
+
+type OverviewApi = {
+  articles: number;
+  prompts: number;
+  providers: number;
+  credits_left: number;
+  credits_expiry: string | null;
+};
 
 type Stats = {
   articles: number;
@@ -24,16 +34,27 @@ export default function DashboardPage() {
     }
     (async () => {
       try {
-        const res = await api.get<Stats>("/api/dashboard");
-        setStats(res);
+        // ✅ Backend route matches your Slim API
+        const res = await api.get<OverviewApi>("/api/admin/overview");
+        setStats({
+          articles: res.articles ?? 0,
+          prompts: res.prompts ?? 0,
+          providers: res.providers ?? 0,
+          credits: res.credits_left ?? 0,
+          expiry: res.credits_expiry ?? null,
+        });
       } catch (e: any) {
         setErr(e.message || "Failed to load");
       }
     })();
   }, [r]);
 
-  if (err) return <p className="text-red-600">{err}</p>;
-  if (!stats) return <p className="text-gray-500">Loading…</p>;
+  if (err) {
+    return <p className="text-red-600 p-6">Failed to load: {err}</p>;
+  }
+  if (!stats) {
+    return <p className="text-gray-500 p-6">Loading…</p>;
+  }
 
   const cards = [
     { label: "Articles", value: stats.articles },
