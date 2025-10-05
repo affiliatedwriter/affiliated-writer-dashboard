@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { apiPost } from "@/lib/api"; // named helper ব্যবহার করি
+
+type LoginRes = { token: string; user?: { name: string; email: string } };
 
 export default function LoginPage() {
   const r = useRouter();
@@ -15,11 +17,8 @@ export default function LoginPage() {
     setErr("");
 
     try {
-      const res = await api.post<{ token: string }>("/auth/login", {
-        email,
-        password,
-      });
-
+      // শুধু '/auth/login' দিলেও helper অটোভাবে '/api/...' প্রিফিক্স করে দেবে
+      const res = await apiPost<LoginRes>("/auth/login", { email, password });
       localStorage.setItem("token", res.token);
       r.replace("/dashboard");
     } catch (e: any) {
