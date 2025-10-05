@@ -1,5 +1,0 @@
-{
-    "require": {
-        "tuupola/cors-middleware": "1.3"
-    }
-}
