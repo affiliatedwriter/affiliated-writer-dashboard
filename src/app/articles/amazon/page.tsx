@@ -24,9 +24,11 @@ type AmazonApi = { id: number; title: string; partnerTag?: string; country?: str
 
 type PublishMode = "editor" | "wordpress" | "blogger";
 type PublishStatus = "draft" | "publish" | "schedule";
+
+/** 👉 গুরুত্বপূর্ণ: number, 0 মানে “unset”. */
 type PublishTarget = {
   mode: PublishMode;
-  wordpress?: { websiteId: number | null; categoryId: number | null; status: PublishStatus };
+  wordpress?: { websiteId: number; categoryId: number; status: PublishStatus };
   blogger?: { blogId: number | null; status: PublishStatus };
   schedule?: { everyHours: number };
 };
@@ -79,7 +81,8 @@ export default function AmazonBulkPage() {
   /* Publish */
   const [publish, setPublish] = useState<PublishTarget>({
     mode: "editor",
-    wordpress: { websiteId: null, categoryId: null, status: "draft" },
+    /** 0 = unset (TS-safe) */
+    wordpress: { websiteId: 0, categoryId: 0, status: "draft" },
     blogger: { blogId: null, status: "draft" },
     schedule: { everyHours: 6 },
   });
@@ -109,27 +112,34 @@ export default function AmazonBulkPage() {
 
   /* -------- Load WP categories when site changes -------- */
   useEffect(() => {
-    const wid = publish.wordpress?.websiteId ?? null;
+    const wid = publish.wordpress?.websiteId ?? 0;
+
+    // wid না থাকলে — টাইপ-সেইফ fallback (number)
     if (!wid) {
       setWpCats([]);
       setPublish((p) => ({
         ...p,
-        wordpress: { ...(p.wordpress || { status: "draft" }), categoryId: null },
+        wordpress: { websiteId: 0, categoryId: 0, status: "draft" },
       }));
       return;
     }
+
     (async () => {
       try {
         const res = await api.get<any>(`/api/publish/wp-categories/${wid}`);
         const cats = pickArray<WpCategory>(res, "categories", "data", "items");
         setWpCats(Array.isArray(cats) ? cats : []);
+
         const site = wpSites.find((w) => w.id === wid);
+        const defaultCat = site?.default_category_id ?? 0;
+
         setPublish((p) => ({
           ...p,
           wordpress: {
-            ...(p.wordpress || { status: "draft" }),
             websiteId: wid,
-            categoryId: p.wordpress?.categoryId ?? site?.default_category_id ?? null,
+            categoryId: p.wordpress?.categoryId && p.wordpress.categoryId > 0
+              ? p.wordpress.categoryId
+              : defaultCat,
             status: p.wordpress?.status ?? "draft",
           },
         }));
@@ -155,7 +165,7 @@ export default function AmazonBulkPage() {
       return "Please enter your Amazon tracking ID (store/partner tag).";
 
     if (publish.mode === "wordpress") {
-      const wid = publish.wordpress?.websiteId ?? null;
+      const wid = publish.wordpress?.websiteId ?? 0;
       if (!wid) return "Choose a WordPress website.";
       const st = publish.wordpress?.status ?? "draft";
       if (st === "schedule" && (publish.schedule?.everyHours ?? 0) <= 0)
@@ -176,7 +186,7 @@ export default function AmazonBulkPage() {
   const setWpStatus = (status: PublishStatus) =>
     setPublish((p) => ({
       ...p,
-      wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null }), status },
+      wordpress: { ...(p.wordpress || { websiteId: 0, categoryId: 0 }), status },
     }));
   const setBlogStatus = (status: PublishStatus) =>
     setPublish((p) => ({ ...p, blogger: { ...(p.blogger || { blogId: null }), status } }));
@@ -496,14 +506,14 @@ export default function AmazonBulkPage() {
                   </label>
                   <select
                     className="w-full rounded-lg border px-3 py-2"
-                    value={publish.wordpress?.websiteId ?? ""}
+                    value={publish.wordpress?.websiteId ? publish.wordpress.websiteId : ""}
                     onChange={(e) =>
                       setPublish((p) => ({
                         ...p,
                         wordpress: {
                           ...(p.wordpress || { status: "draft" }),
-                          websiteId: e.target.value ? Number(e.target.value) : null,
-                          categoryId: p.wordpress?.categoryId ?? null,
+                          websiteId: e.target.value ? Number(e.target.value) : 0,
+                          categoryId: p.wordpress?.categoryId ?? 0,
                         },
                       }))
                     }
@@ -523,14 +533,13 @@ export default function AmazonBulkPage() {
                   </label>
                   <select
                     className="w-full rounded-lg border px-3 py-2"
-                    value={publish.wordpress?.categoryId ?? ""}
+                    value={publish.wordpress?.categoryId ? publish.wordpress.categoryId : ""}
                     onChange={(e) =>
                       setPublish((p) => ({
                         ...p,
                         wordpress: {
-                          ...(p.wordpress || { websiteId: null, status: "draft" }),
-                          categoryId:
-                            e.target.value === "" ? null : Number(e.target.value),
+                          ...(p.wordpress || { websiteId: 0, status: "draft" }),
+                          categoryId: e.target.value ? Number(e.target.value) : 0,
                         },
                       }))
                     }
@@ -601,9 +610,7 @@ export default function AmazonBulkPage() {
                         ...p,
                         blogger: {
                           ...(p.blogger || { status: "draft" }),
-                          blogId: e.target.value
-                            ? Number(e.target.value)
-                            : (null as any),
+                          blogId: e.target.value ? Number(e.target.value) : (null as any),
                         },
                       }))
                     }
