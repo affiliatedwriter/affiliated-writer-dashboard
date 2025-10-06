@@ -1,19 +1,23 @@
-// File: src/app/admin/layout.tsx
 "use client";
 
-import React from "react";
-import AdminGuard from "@/components/admin/AdminGuard";
+import { ReactNode } from "react";
+import Sidebar from "@/components/AdminSidebar";
 
-// ⛔ Sidebar এখানে নয়—Root layout-এ একবারই আছে
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Admin layout:
+ * - Only admin routes use this layout.
+ * - Renders the AdminSidebar at the left and page content at the right.
+ */
+export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
-    <AdminGuard>
-      <section className="p-6">
-        <header className="mb-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-800">Admin</h1>
-        </header>
+    <div className="min-h-screen flex bg-gray-50">
+      <aside className="w-[240px] shrink-0 border-r bg-white">
+        <Sidebar />
+      </aside>
+
+      <main className="flex-1 p-6">
         {children}
-      </section>
-    </AdminGuard>
+      </main>
+    </div>
   );
 }
