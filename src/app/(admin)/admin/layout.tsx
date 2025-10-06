@@ -1,4 +1,5 @@
 ﻿import AdminSidebar from "@/components/AdminSidebar"; // না থাকলে নিজের Admin সাইডবার কম্পোনেন্ট দিন
+import Sidebar from "@/components/Sidebar";
 
 export default function AdminLayout({
   children,
