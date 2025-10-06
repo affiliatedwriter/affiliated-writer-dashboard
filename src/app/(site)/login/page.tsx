@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost } from "@/lib/api"; // ✅ এখানে পরিবর্তন — named import
+import { apiPost } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,7 +13,6 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
     try {
       const response = await apiPost("/auth/login", { email, password });
       if (response?.success) {
@@ -23,7 +22,7 @@ export default function LoginPage() {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Network error");
+      setError("Failed to fetch");
     }
   };
 
