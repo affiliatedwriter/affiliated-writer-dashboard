@@ -4,72 +4,59 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
-type LoginRes = {
-  token: string;
-  user: {
-    name: string;
-    email: string;
-    role: "admin" | "user";
-  };
-};
-
 export default function LoginPage() {
-  const r = useRouter();
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
     try {
-      const res = await api.post<LoginRes>("/auth/login", { email, password });
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          token: res.token,
-          role: res.user.role,
-        })
-      );
-
-      r.replace("/dashboard");
+      const response = await api.apiPost("/auth/login", { email, password });
+      if (response?.success) {
+        router.push("/dashboard");
+      } else {
+        setError(response?.message || "Login failed");
+      }
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      console.error(err);
+      setError(err.message || "Network error");
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <form
-        onSubmit={handleSubmit}
-        className="p-8 bg-white shadow-md rounded-xl space-y-4 w-96"
-      >
-        <h1 className="text-2xl font-semibold text-center">Login</h1>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border rounded-md px-3 py-2"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border rounded-md px-3 py-2"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
-        >
-          Login
-        </button>
-      </form>
+    <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="bg-white shadow-lg rounded-xl p-8 w-[400px]">
+        <h2 className="text-center text-2xl font-semibold mb-4">Login</h2>
+        {error && <p className="text-red-500 text-center mb-3">{error}</p>}
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="admin@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full border px-4 py-2 mb-3 rounded-md"
+            required
+          />
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border px-4 py-2 mb-5 rounded-md"
+            required
+          />
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+          >
+            Login
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
