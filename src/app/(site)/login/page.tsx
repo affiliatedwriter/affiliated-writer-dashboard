@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost } from "@/lib/api";
+import api from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,15 +14,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     try {
-      const response = await apiPost("/auth/login", { email, password });
-      if (response?.success) {
-        router.push("/dashboard");
-      } else {
-        setError(response?.message || "Login failed");
-      }
+      const res = await api.apiPost("/auth/login", { email, password });
+      if (res?.success) router.push("/dashboard");
+      else setError(res?.message || "Login failed");
     } catch (err: any) {
       console.error(err);
-      setError("Failed to fetch");
+      setError("Failed to connect to server");
     }
   };
 
@@ -42,7 +39,7 @@ export default function LoginPage() {
           />
           <input
             type="password"
-            placeholder="••••••••"
+            placeholder="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border px-4 py-2 mb-5 rounded-md"
