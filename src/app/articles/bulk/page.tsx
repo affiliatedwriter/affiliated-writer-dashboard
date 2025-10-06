@@ -1,13 +1,23 @@
-// File: src/app/articles/bulk/page.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
-import PublishingDestination, { PublishPayload } from "@/components/PublishingDestination";
+import PublishingDestination from "@/components/PublishingDestination";
 import api from "@/lib/api";
 
+/* ================= Types (local) ================= */
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
+
+type PublishStatus = "draft" | "publish" | "schedule";
+type PublishPlatform = "editor" | "wordpress" | "blogger";
+type PublishPayload = {
+  platform: PublishPlatform;
+  status: PublishStatus;
+  wordpress?: { websiteId: number | null; categoryId: number | null };
+  blogger?: { blogId: number | null };
+  schedule?: { everyHours: number };
+};
 
 export default function InfoArticlePage() {
   /* ================= Model & core inputs ================= */
@@ -26,8 +36,8 @@ export default function InfoArticlePage() {
 
   /* ================= Publishing ================= */
   const [publish, setPublish] = useState<PublishPayload>({
-    platform: "editor", // "wordpress" | "blogger" | "editor"
-    status: "draft",    // "draft" | "publish" | "schedule"
+    platform: "editor",
+    status: "draft",
   });
 
   /* ================= UI ================= */
@@ -51,7 +61,7 @@ export default function InfoArticlePage() {
     if (faqs < 0 || faqs > 20) return "FAQs must be between 0 and 20.";
     if (publish.platform === "wordpress" || publish.platform === "blogger") {
       if (publish.status === "schedule") {
-        const hrs = (publish as any)?.schedule?.everyHours ?? 0;
+        const hrs = publish.schedule?.everyHours ?? 0;
         if (!hrs || hrs <= 0) return "Enter schedule hours (> 0).";
       }
     }
@@ -77,9 +87,9 @@ export default function InfoArticlePage() {
           keywords: list,
           sections,
           faqs,
-          schema_type: schema,                 // "Review" | "BlogPosting" | "Article"
+          schema_type: schema, // "Review" | "BlogPosting" | "Article"
           meta_mode: useMeta ? "auto" : "off", // meta description on/off
-          image_source: imageSource,           // "google" | "stock"
+          image_source: imageSource, // "google" | "stock"
           image_credit: imageCredit || null,
         },
         integrations: {
