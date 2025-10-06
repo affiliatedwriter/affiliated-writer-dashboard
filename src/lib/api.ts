@@ -1,22 +1,31 @@
 import axios from "axios";
 import { logout } from "./auth";
 
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE || "https://your-backend-url.com",
-});
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://affiliated-writer-backend.onrender.com";
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+export async function apiGet(endpoint: string) {
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
 
-api.interceptors.response.use(
-  (res) => res.data,
-  (err) => {
-    if (err.response?.status === 401) logout();
-    return Promise.reject(err);
-  }
-);
+export async function apiPost(endpoint: string, body: any) {
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
 
-export default api;
+export async function logout() {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+}
