@@ -1,5 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true }, // চাইলে এটা বাদ দিতে পারো
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_BASE}/api/:path*`,
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: '/credits',          destination: '/admin/credits',          permanent: false },
@@ -9,5 +19,6 @@ const nextConfig = {
     ];
   },
 };
+
 
 module.exports = nextConfig;

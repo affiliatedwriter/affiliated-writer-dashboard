@@ -1,31 +1,22 @@
+// components/ClientShell.tsx
 "use client";
 
-import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 
-/**
- * ClientShell:
- * - App-wide shell for non-admin pages.
- * - Hides the public Sidebar when path starts with "/admin"
- *   because admin pages already render their own sidebar
- *   via src/app/admin/layout.tsx.
- */
-export default function ClientShell({ children }: { children: ReactNode }) {
+export default function ClientShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
 
-  return (
-    <div className="min-h-screen flex bg-gray-50">
-      {!isAdmin && (
-        <aside className="w-[240px] shrink-0 border-r bg-white">
-          <Sidebar />
-        </aside>
-      )}
+  // কোনো কারণে admin রুটে এসে পড়লে, ইউজার সাইডবার দেখাবো না
+  if (isAdmin) return <>{children}</>;
 
-      <main className="flex-1 p-6">
-        {children}
-      </main>
+  return (
+    <div className="min-h-dvh grid grid-cols-[260px_1fr]">
+      <aside className="border-r bg-white">
+        <Sidebar />
+      </aside>
+      <main className="min-h-dvh">{children}</main>
     </div>
   );
 }
