@@ -4,9 +4,8 @@
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 
-/** রুটভিত্তিক শিরোনাম */
+/** Map routes → readable titles */
 function titleFromPath(path: string): string {
-  // ঠিক মিল
   const exact: Record<string, string> = {
     "/dashboard": "Dashboard",
     "/articles": "Articles",
@@ -22,8 +21,6 @@ function titleFromPath(path: string): string {
     "/admin/credits": "Admin • Credits Manager",
   };
   if (exact[path]) return exact[path];
-
-  // প্রিফিক্স-ভিত্তিক (যদি নেস্টেড রুট থাকে)
   if (path.startsWith("/admin")) return "Admin";
   if (path.startsWith("/articles")) return "Articles";
   return "Dashboard";
@@ -31,19 +28,24 @@ function titleFromPath(path: string): string {
 
 export default function Navbar({ title }: { title?: string }) {
   const pathname = usePathname();
-  const computed = useMemo(() => title ?? titleFromPath(pathname), [title, pathname]);
+  const computed = useMemo(
+    () => title ?? titleFromPath(pathname || "/"),
+    [title, pathname]
+  );
 
   const signOut = () => {
     try {
       localStorage.removeItem("token");
-    } catch {}
-    // হার্ড রিডাইরেক্ট যাতে স্টেট ক্লিয়ার হয়
+    } catch {
+      /* ignore */
+    }
+    // Hard redirect to clear all in-memory state
     window.location.href = "/login";
   };
 
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
-      <div className="max-w-7xl mx-auto px-6 md:px-8 h-14 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-6 md:px-8 h-14 flex items-center justify-between">
         <h1 className="text-lg font-semibold truncate">{computed}</h1>
 
         <div className="flex items-center gap-4 text-sm">
