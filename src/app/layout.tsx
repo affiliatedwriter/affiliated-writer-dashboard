@@ -1,5 +1,4 @@
-﻿// src/app/layout.tsx
-export const metadata = {
+﻿export const metadata = {
   title: "Affiliated Writer",
   description: "Dashboard",
 };
