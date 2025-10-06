@@ -1,7 +1,5 @@
-// src/app/(site)/layout.tsx
-import type { ReactNode } from "react";
-import ClientShell from "@/components/ClientShell";
+﻿import ClientShell from "@/components/ClientShell";
 
-export default function SiteLayout({ children }: { children: ReactNode }) {
+export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return <ClientShell>{children}</ClientShell>;
 }

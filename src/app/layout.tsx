@@ -1,12 +1,9 @@
-// src/app/layout.tsx
-import type { ReactNode } from "react";
-
-export const metadata = {
+﻿export const metadata = {
   title: "Affiliated Writer",
   description: "Dashboard",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>{children}</body>
