@@ -1,8 +1,8 @@
 // File: affiliated-writer/affiliated-writer-dashboard/src/lib/auth.ts
-export function isAuthed(): boolean {
+export const isAuthed = (): boolean => {
   if (typeof window === "undefined") return false;
   return !!localStorage.getItem("token");
-}
+};
 
 export function getUserRole(): "admin" | "user" {
   if (typeof window === "undefined") return "user";

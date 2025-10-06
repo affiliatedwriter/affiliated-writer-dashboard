@@ -1,41 +1,46 @@
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getUserRole } from "@/lib/auth";
 import { useEffect, useState } from "react";
 
-function NavItem({ href, label }: { href: string; label: string }) {
-  const path = usePathname();
-  const active = path === href || path.startsWith(href + "/");
-  return (
-    <Link
-      href={href}
-      className={`block px-3 py-2 text-sm rounded-md transition ${
-        active
-          ? "bg-gray-100 font-semibold text-gray-900"
-          : "text-gray-700 hover:bg-gray-50"
-      }`}
-    >
-      {label}
-    </Link>
-  );
-}
-
 export default function Sidebar() {
-  const [role, setRole] = useState<"admin" | "user">("user");
+  const pathname = usePathname();
+  const [role, setRole] = useState<"admin" | "user" | null>(null);
 
+  // user info read from localStorage
   useEffect(() => {
-    setRole(getUserRole());
+    try {
+      const u = localStorage.getItem("user");
+      if (u) {
+        const parsed = JSON.parse(u);
+        if (parsed?.email?.includes("admin")) setRole("admin");
+        else setRole("user");
+      } else setRole(null);
+    } catch {
+      setRole(null);
+    }
   }, []);
 
-  return (
-    <aside className="h-screen w-64 bg-white border-r overflow-y-auto">
-      <div className="px-4 py-4 flex items-center gap-2 font-semibold text-lg">
-        ⚡ <span>Affiliated</span> <span className="text-gray-500">Writer</span>
-      </div>
+  const NavItem = ({ href, label }: { href: string; label: string }) => {
+    const active = pathname === href || pathname.startsWith(href + "/");
+    return (
+      <Link
+        href={href}
+        className={`block rounded-md px-3 py-2 text-sm ${
+          active ? "bg-gray-100 font-medium text-gray-900" : "text-gray-700 hover:bg-gray-50"
+        }`}
+      >
+        {label}
+      </Link>
+    );
+  };
 
-      <nav className="px-2 space-y-1">
+  return (
+    <aside className="h-screen w-64 border-r bg-white overflow-y-auto">
+      <div className="px-4 py-4 font-bold text-lg flex items-center gap-1">
+        <span className="text-blue-500">⚡</span> Affiliated <span className="text-gray-500">Writer</span>
+      </div>
+      <nav className="px-3 space-y-1">
         <NavItem href="/dashboard" label="Dashboard" />
         <NavItem href="/articles" label="Articles" />
         <NavItem href="/publish" label="Website & API" />

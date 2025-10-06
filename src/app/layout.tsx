@@ -1,9 +1,8 @@
-﻿// File: src/app/layout.tsx
-import "./globals.css"; // থাকলে
+﻿import "./globals.css";
 
 export const metadata = {
   title: "Affiliated Writer",
-  description: "Dashboard",
+  description: "Dashboard for managing AI content",
 };
 
 export default function RootLayout({
@@ -13,8 +12,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      {/* এখানে কখনও Sidebar/ClientShell দেবেন না */}
-      <body suppressHydrationWarning>{children}</body>
+      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
+        {children}
+      </body>
     </html>
   );
 }
