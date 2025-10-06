@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/api";
+import { apiPost } from "@/lib/api"; // ✅ এখানে পরিবর্তন — named import
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,7 +15,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await api.apiPost("/auth/login", { email, password });
+      const response = await apiPost("/auth/login", { email, password });
       if (response?.success) {
         router.push("/dashboard");
       } else {
