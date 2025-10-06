@@ -1,21 +1,25 @@
-// File: affiliated-writer/affiliated-writer-dashboard/src/lib/auth.ts
-export const isAuthed = (): boolean => {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem("token");
+// File: src/lib/auth.ts
+export type User = {
+  name: string;
+  email: string;
+  role: "admin" | "user";
+  token: string;
 };
 
-export function getUserRole(): "admin" | "user" {
-  if (typeof window === "undefined") return "user";
+export function getUser(): User | null {
+  if (typeof window === "undefined") return null;
   try {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    return user.role === "admin" ? "admin" : "user";
+    const json = localStorage.getItem("user");
+    return json ? JSON.parse(json) : null;
   } catch {
-    return "user";
+    return null;
   }
 }
 
-export function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  window.location.href = "/login";
+export function isAuthed(): boolean {
+  return !!getUser()?.token;
+}
+
+export function isAdmin(): boolean {
+  return getUser()?.role === "admin";
 }

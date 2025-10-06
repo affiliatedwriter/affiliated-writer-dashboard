@@ -1,67 +1,75 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost } from "@/lib/api";
+import api from "@/lib/api";
+
+type LoginRes = {
+  token: string;
+  user: {
+    name: string;
+    email: string;
+    role: "admin" | "user";
+  };
+};
 
 export default function LoginPage() {
   const r = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    const t = localStorage.getItem("token");
-    if (t) r.replace("/dashboard");
-  }, [r]);
-
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr("");
     try {
-      setBusy(true);
-      const res = await apiPost("/auth/login", { email, password });
-      localStorage.setItem("token", res.token);
-      if (res.user) localStorage.setItem("user", JSON.stringify(res.user));
+      const res = await api.post<LoginRes>("/auth/login", { email, password });
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          token: res.token,
+          role: res.user.role,
+        })
+      );
+
       r.replace("/dashboard");
-    } catch (e: any) {
-      setErr(e.message || "Login failed");
-    } finally {
-      setBusy(false);
+    } catch (err: any) {
+      setError(err.message || "Login failed");
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
-      <div className="bg-white rounded-xl border shadow-sm w-full max-w-md p-6">
-        <h1 className="text-2xl font-bold mb-4">Sign In</h1>
-        {err && <div className="text-red-600 mb-2 text-sm">{err}</div>}
-        <form onSubmit={handleLogin} className="space-y-3">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded-lg p-2"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded-lg p-2"
-            required
-          />
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium"
-          >
-            {busy ? "Please wait…" : "Login"}
-          </button>
-        </form>
-      </div>
+    <div className="flex items-center justify-center h-screen">
+      <form
+        onSubmit={handleSubmit}
+        className="p-8 bg-white shadow-md rounded-xl space-y-4 w-96"
+      >
+        <h1 className="text-2xl font-semibold text-center">Login</h1>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full border rounded-md px-3 py-2"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          className="w-full border rounded-md px-3 py-2"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+        >
+          Login
+        </button>
+      </form>
     </div>
   );
 }
