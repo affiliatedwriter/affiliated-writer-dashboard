@@ -15,9 +15,9 @@ type ProviderKey = {
   status?: string;
 };
 
-// ------- helpers to keep inputs controlled -------
-const s = (v: string | null | undefined, d = "") => (v ?? d);         // string
-const n = (v: number | null | undefined, d: number) => {              // number
+// ------- small helpers -------
+const s = (v: string | null | undefined, d = "") => (v ?? d);
+const n = (v: number | null | undefined, d: number) => {
   const num = typeof v === "number" ? v : Number(v);
   return Number.isFinite(num) ? num : d;
 };
@@ -64,7 +64,7 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(false);
   const [keyToDelete, setKeyToDelete] = useState<number | null>(null);
 
-  // Normalize any provider row before putting into state
+  // normalize any row
   const normalize = (p: Partial<ProviderKey>): ProviderKey => ({
     id: p.id,
     name: s(p.name, ""),
@@ -78,12 +78,11 @@ export default function AdminSettings() {
     status: s(p.status, undefined as any),
   });
 
-  // Load providers
+  // Load providers (generic সরানো হয়েছে)
   const loadProviders = async () => {
     setLoading(true);
     try {
-      // our api wrapper returns parsed body (not axios response)
-      const body = await api.get<{ data: ProviderKey[] }>("/api/admin/providers");
+      const body = await (api as any).get("/api/admin/providers");
       const list = Array.isArray(body?.data) ? body.data.map(normalize) : [];
       setKeys(list);
     } catch (e: any) {
@@ -97,16 +96,20 @@ export default function AdminSettings() {
     loadProviders();
   }, []);
 
-  // Save or Update
+  // ---- Save or Update ----
   const saveProvider = async () => {
     setLoading(true);
     try {
       const payload = normalize(form);
-      const endpoint = payload.id ? `/api/admin/providers/${payload.id}` : "/api/admin/providers";
+      const endpoint = payload.id
+        ? `/api/admin/providers/${payload.id}`
+        : "/api/admin/providers";
       const method = payload.id ? "put" : "post";
-      const saved = await (api as any)[method]<{ data: ProviderKey }>(endpoint, payload);
 
-      const row = normalize(saved?.data || payload);
+      const resp = await (api as any)[method](endpoint, payload); // no generic
+      const saved = (resp && (resp.data ?? resp)) as Partial<ProviderKey>;
+
+      const row = normalize(saved || payload);
       setKeys((prev) => {
         const idx = prev.findIndex((x) => x.id === row.id);
         if (idx >= 0) {
@@ -126,13 +129,23 @@ export default function AdminSettings() {
     }
   };
 
-  const startEdit = (p: ProviderKey) => setForm(normalize(p));
+  // ---- Toggle Active/Inactive ----
+  const toggleStatus = async (p: ProviderKey) => {
+    try {
+      const updated = { ...p, is_active: p.is_active ? 0 : 1 };
+      const resp = await (api as any).put(`/api/admin/providers/${p.id}`, updated);
+      const row = normalize(((resp && resp.data) ?? updated) as Partial<ProviderKey>);
+      setKeys((prev) => prev.map((x) => (x.id === row.id ? row : x)));
+    } catch (e: any) {
+      setToast({ message: e?.message || "Toggle failed", type: "error" });
+    }
+  };
 
-  // Delete
+  // ---- Delete ---- (একটাই ডিফিনিশন রাখছি)
   const deleteProvider = async () => {
     if (keyToDelete == null) return;
     try {
-      await api.delete(`/api/admin/providers/${keyToDelete}`);
+      await (api as any).delete(`/api/admin/providers/${keyToDelete}`);
       setKeys((prev) => prev.filter((x) => x.id !== keyToDelete));
       setToast({ message: "Provider deleted successfully!", type: "success" });
     } catch (e: any) {
@@ -142,27 +155,17 @@ export default function AdminSettings() {
     }
   };
 
-  // Toggle Active/Inactive
-  const toggleStatus = async (p: ProviderKey) => {
-    try {
-      const updated = { ...p, is_active: p.is_active ? 0 : 1 };
-      const body = await api.put<{ data: ProviderKey }>(`/api/admin/providers/${p.id}`, updated);
-      const row = normalize(body?.data || updated);
-      setKeys((prev) => prev.map((x) => (x.id === row.id ? row : x)));
-    } catch (e: any) {
-      setToast({ message: e?.message || "Toggle failed", type: "error" });
-    }
-  };
-
-  // Test API Key
+  // ---- Test API Key ----
   const testKey = async (provider: ProviderKey) => {
     setToast({ message: "Testing key…", type: "success" });
     try {
-      const r = await api.post<{ ok: boolean; message?: string }>(
+      const r = await (api as any).post(
         `/api/admin/providers/${provider.id}/test`,
         {}
       );
-      setToast({ message: r?.message || (r?.ok ? "Key is valid" : "Invalid key"), type: r?.ok ? "success" : "error" });
+      const ok = !!(r?.ok ?? r?.data?.ok);
+      const msg = r?.message ?? r?.data?.message ?? (ok ? "Key is valid" : "Invalid key");
+      setToast({ message: msg, type: ok ? "success" : "error" });
     } catch (e: any) {
       setToast({ message: e?.message || "Testing failed", type: "error" });
     }
@@ -336,7 +339,7 @@ export default function AdminSettings() {
                     </span>
                   </td>
                   <td className="p-4 flex gap-2">
-                    <button className="px-3 py-1 border rounded" onClick={() => startEdit(p)}>Edit</button>
+                    <button className="px-3 py-1 border rounded" onClick={() => setForm(normalize(p))}>Edit</button>
                     <button className="px-3 py-1 border rounded" onClick={() => testKey(p)}>Test</button>
                     <button className="px-3 py-1 border rounded text-red-600" onClick={() => setKeyToDelete(p.id!)}>Delete</button>
                   </td>
