@@ -96,38 +96,37 @@ export default function AdminSettings() {
     loadProviders();
   }, []);
 
-  // ---- Save or Update ----
-  const saveProvider = async () => {
-    setLoading(true);
-    try {
-      const payload = normalize(form);
-      const endpoint = payload.id
-        ? `/api/admin/providers/${payload.id}`
-        : "/api/admin/providers";
-      const method = payload.id ? "put" : "post";
+// ---- Save or Update ----
+const saveProvider = async () => {
+  setLoading(true);
+  try {
+    const payload = normalize(form);
+    const endpoint = payload.id ? `/api/admin/providers/${payload.id}` : "/api/admin/providers";
+    const method = payload.id ? "put" : "post";
 
-      const resp = await (api as any)[method](endpoint, payload); // no generic
-      const saved = (resp && (resp.data ?? resp)) as Partial<ProviderKey>;
+    // ✅ জেনেরিক নেই
+    const resp: any = await (api as any)[method](endpoint, payload);
+    const saved = (resp?.data ?? resp) as Partial<ProviderKey>;
 
-      const row = normalize(saved || payload);
-      setKeys((prev) => {
-        const idx = prev.findIndex((x) => x.id === row.id);
-        if (idx >= 0) {
-          const cp = prev.slice();
-          cp[idx] = row;
-          return cp;
-        }
-        return [...prev, row];
-      });
+    const row = normalize(saved || payload);
+    setKeys(prev => {
+      const idx = prev.findIndex(x => x.id === row.id);
+      if (idx >= 0) {
+        const cp = prev.slice();
+        cp[idx] = row;
+        return cp;
+      }
+      return [...prev, row];
+    });
 
-      setForm(empty);
-      setToast({ message: "Provider saved successfully!", type: "success" });
-    } catch (e: any) {
-      setToast({ message: e?.message || "Save failed", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
+    setForm(empty);
+    setToast({ message: "Provider saved successfully!", type: "success" });
+  } catch (e: any) {
+    setToast({ message: e?.message || "Save failed", type: "error" });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ---- Toggle Active/Inactive ----
   const toggleStatus = async (p: ProviderKey) => {
