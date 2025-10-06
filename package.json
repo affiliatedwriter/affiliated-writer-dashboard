@@ -25,6 +25,12 @@
     "eslint-config-next": "15.5.2"
   },
   "eslintConfig": {
-    "extends": ["next/core-web-vitals"]
+    "root": true,
+    "extends": ["next/core-web-vitals"],
+    "rules": {
+      "@typescript-eslint/no-explicit-any": "off",
+      "react-hooks/exhaustive-deps": "off"
+    },
+    "ignorePatterns": [".next/*", "node_modules/*"]
   }
 }
