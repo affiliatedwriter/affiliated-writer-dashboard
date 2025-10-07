@@ -1,30 +1,43 @@
-"use client";
+// src/lib/api.ts
+export const API_BASE =
+  (process.env.NEXT_PUBLIC_API_BASE || "").replace(/\/$/, "");
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE || "https://affiliated-writer-backend.onrender.com";
+type Json = Record<string, any>;
 
-export async function apiGet(endpoint: string) {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: "GET",
+type FetchOpts = RequestInit & { json?: Json };
+
+async function request(path: string, opts: FetchOpts = {}) {
+  if (!API_BASE) throw new Error("API base missing (NEXT_PUBLIC_API_BASE).");
+
+  const url = `${API_BASE}${path}`;
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(opts.headers || {}),
+  };
+
+  const res = await fetch(url, {
+    method: opts.method ?? (opts.json ? "POST" : "GET"),
+    headers,
+    body: opts.json ? JSON.stringify(opts.json) : (opts.body as BodyInit | null),
     credentials: "include",
+    cache: "no-store",
+    redirect: "follow",
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || `${res.status} ${res.statusText}`);
+  }
+
+  const ct = res.headers.get("content-type") || "";
+  return ct.includes("application/json") ? res.json() : res.text();
 }
 
-export async function apiPost(endpoint: string, body: any) {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
+export const apiGet = (path: string) => request(path, { method: "GET" });
+export const apiPost = (path: string, json?: Json) =>
+  request(path, { method: "POST", json });
+export const apiLogout = () => request("/api/auth/logout", { method: "POST" });
 
-export default {
-  apiGet,
-  apiPost,
-};
+// সম্পূর্ণ অবজেক্ট হিসেবে চাইলে আগের কোডও সাপোর্ট করবে
+const api = { get: apiGet, post: apiPost, logout: apiLogout };
+export default api;
