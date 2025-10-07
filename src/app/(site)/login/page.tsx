@@ -1,13 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import api from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -19,20 +15,15 @@ export default function LoginPage() {
     try {
       const res = await api.post("/api/auth/login", { email, password });
       console.log("Login success:", res);
-
-      localStorage.setItem("user", JSON.stringify(res.user));
-      document.cookie = `token=${res.token}; path=/;`;
-
-      router.push("/dashboard");
     } catch (err) {
       console.error("Login failed:", err);
-      setError("Invalid email or password.");
+      setError("Failed to login");
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-50">
-      <div className="bg-white shadow-lg rounded-xl p-8 w-[400px]">
+    <div className="flex items-center justify-center h-screen bg-gray-100">
+      <div className="bg-white shadow-lg rounded-2xl p-8 w-[400px]">
         <h2 className="text-center text-2xl font-semibold mb-4">Login</h2>
         {error && <p className="text-red-500 text-center mb-3">{error}</p>}
         <form onSubmit={handleLogin}>

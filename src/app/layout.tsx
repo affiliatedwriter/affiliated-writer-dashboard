@@ -1,10 +1,22 @@
-﻿import { AuthProvider } from "@/context/AuthContext";
+﻿import "./globals.css";
+import { Inter } from "next/font/google";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata = {
+  title: "Affiliated Writer",
+  description: "AI Powered Content Writing Dashboard",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
-      <body>
-        <AuthProvider>{children}</AuthProvider>
+      <body className={`${inter.className} bg-gray-50 text-gray-900`}>
+        {children}
       </body>
     </html>
   );
