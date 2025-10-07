@@ -1,25 +1,34 @@
-// src/lib/usePublishOptions.ts
 import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/api";
+import { apiGet } from "./api";
 
-export function usePublishOptions() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+export interface PublishOption {
+  id: string;
+  name: string;
+}
+
+export const asOptions = (data: any[]): PublishOption[] =>
+  data.map((d) => ({ id: d.id, name: d.name }));
+
+export const usePublishOptions = (endpoint: string) => {
+  const [options, setOptions] = useState<PublishOption[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    let ok = true;
-    (async () => {
+    const fetchOptions = async () => {
       try {
-        const res = await apiGet("/api/publish/wordpress"); // উদাহরণ
-        if (ok) setData(res);
+        setLoading(true);
+        const res = await apiGet(endpoint);
+        setOptions(asOptions(res));
+      } catch (err) {
+        console.error("Failed to fetch options:", err);
       } finally {
-        if (ok) setLoading(false);
+        setLoading(false);
       }
-    })();
-    return () => {
-      ok = false;
     };
-  }, []);
+    fetchOptions();
+  }, [endpoint]);
 
-  return { data, loading };
-}
+  return { options, loading };
+};
+
+export default usePublishOptions;
