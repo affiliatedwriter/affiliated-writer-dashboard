@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
@@ -10,19 +10,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const stored = localStorage.getItem("authUser");
-    if (stored) setUser(JSON.parse(stored));
+    const savedUser = localStorage.getItem("authUser");
+    if (savedUser) setUser(JSON.parse(savedUser));
   }, []);
 
   const login = (data: any) => {
     setUser(data.user);
     localStorage.setItem("authUser", JSON.stringify(data.user));
-    router.push(data.user?.role === "admin" ? "/admin" : "/dashboard");
+    router.push("/dashboard");
   };
 
   const logout = () => {
@@ -39,19 +39,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
 };
 
-// ✅ Helper functions
-export const isAuthed = () => {
-  if (typeof window === "undefined") return false;
-  return !!localStorage.getItem("authUser");
-};
-
+// Utility checks
+export const isAuthed = () => !!localStorage.getItem("authUser");
 export const isAdmin = () => {
-  if (typeof window === "undefined") return false;
-  const user = JSON.parse(localStorage.getItem("authUser") || "{}");
-  return user?.role === "admin";
+  const user = localStorage.getItem("authUser");
+  if (!user) return false;
+  try {
+    const parsed = JSON.parse(user);
+    return parsed.role === "admin";
+  } catch {
+    return false;
+  }
 };

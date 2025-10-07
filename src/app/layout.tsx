@@ -1,20 +1,15 @@
 ﻿import "./globals.css";
-import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/auth";
 
-export const metadata: Metadata = {
-  title: "Affiliated Writer Dashboard",
-  description: "Professional writing management tool",
+export const metadata = {
+  title: "Affiliated Writer",
+  description: "Writer Dashboard",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50">
+      <body>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -3,49 +3,51 @@
 import React, { useMemo, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination from "@/components/PublishingDestination";
-import api from "@/lib/api";
+import { apiPost } from "@/lib/api";
 
-/* ================= Types (local) ================= */
+/* ================= Types ================= */
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
 
 type PublishStatus = "draft" | "publish" | "schedule";
 type PublishPlatform = "editor" | "wordpress" | "blogger";
-type PublishPayload = {
+
+interface PublishPayload {
   platform: PublishPlatform;
   status: PublishStatus;
   wordpress?: { websiteId: number | null; categoryId: number | null };
   blogger?: { blogId: number | null };
   schedule?: { everyHours: number };
-};
+}
 
-export default function InfoArticlePage() {
-  /* ================= Model & core inputs ================= */
+/* ================= Component ================= */
+export default function BulkArticlePage() {
+  /* ========== Inputs ========== */
   const [model, setModel] = useState("chatgpt");
   const [keywords, setKeywords] = useState("");
   const [sections, setSections] = useState(5);
   const [faqs, setFaqs] = useState(5);
 
-  /* ================= Schema & Meta ================= */
+  /* ========== Schema & Meta ========== */
   const [schema, setSchema] = useState<SchemaType>("BlogPosting");
   const [useMeta, setUseMeta] = useState(true);
 
-  /* ================= Images ================= */
+  /* ========== Images ========== */
   const [imageSource, setImageSource] = useState<ImageSource>("google");
   const [imageCredit, setImageCredit] = useState("");
 
-  /* ================= Publishing ================= */
+  /* ========== Publish Options ========== */
   const [publish, setPublish] = useState<PublishPayload>({
     platform: "editor",
     status: "draft",
   });
 
-  /* ================= UI ================= */
+  /* ========== UI State ========== */
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string>("");
+  const [error, setError] = useState("");
 
-  /* Derived: normalized keyword list + stats */
-  const list = useMemo(
+  /* ========== Derived Data ========== */
+  const keywordList = useMemo(
     () =>
       keywords
         .split("\n")
@@ -53,74 +55,76 @@ export default function InfoArticlePage() {
         .filter(Boolean),
     [keywords]
   );
-  const count = list.length;
+  const count = keywordList.length;
 
+  /* ========== Validation ========== */
   const validate = (): string | null => {
-    if (!count) return "Add at least one keyword.";
+    if (!count) return "Please add at least one keyword.";
     if (sections < 3 || sections > 20) return "Sections must be between 3 and 20.";
     if (faqs < 0 || faqs > 20) return "FAQs must be between 0 and 20.";
-    if (publish.platform === "wordpress" || publish.platform === "blogger") {
-      if (publish.status === "schedule") {
-        const hrs = publish.schedule?.everyHours ?? 0;
-        if (!hrs || hrs <= 0) return "Enter schedule hours (> 0).";
-      }
+    if (
+      (publish.platform === "wordpress" || publish.platform === "blogger") &&
+      publish.status === "schedule"
+    ) {
+      const hrs = publish.schedule?.everyHours ?? 0;
+      if (!hrs || hrs <= 0) return "Enter a valid schedule time in hours (> 0).";
     }
     return null;
   };
 
-  const start = async () => {
-    setErr("");
-    const v = validate();
-    if (v) {
-      setErr(v);
+  /* ========== Start Job Handler ========== */
+  const startJob = async () => {
+    setError("");
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     try {
       setBusy(true);
 
-      // Backend-friendly payload
       const payload = {
-        type: "info_bulk",
+        type: "bulk_article",
         model,
         options: {
-          keywords: list,
+          keywords: keywordList,
           sections,
           faqs,
-          schema_type: schema, // "Review" | "BlogPosting" | "Article"
-          meta_mode: useMeta ? "auto" : "off", // meta description on/off
-          image_source: imageSource, // "google" | "stock"
+          schema_type: schema,
+          meta_mode: useMeta ? "auto" : "off",
+          image_source: imageSource,
           image_credit: imageCredit || null,
         },
-        integrations: {
-          publish, // { platform, status, wordpress/blogger props..., schedule? }
-        },
+        integrations: { publish },
       };
 
-      await api.post("/api/jobs/start", payload);
-      alert("Job created!");
-    } catch (e: any) {
-      setErr(e?.message || "Failed to create job");
+      await apiPost("/api/jobs/start", payload);
+      alert("✅ Bulk article job created successfully!");
+    } catch (err: any) {
+      console.error("Job creation failed:", err);
+      setError(err?.message || "Failed to start the job.");
     } finally {
       setBusy(false);
     }
   };
 
+  /* ========== Render UI ========== */
   return (
     <div className="p-6 space-y-6">
-      <h2 className="text-xl font-semibold">Info Article (Bulk)</h2>
+      <h2 className="text-xl font-semibold">Bulk Article Generator</h2>
 
-      {err && (
+      {error && (
         <div className="rounded-md border border-red-200 bg-red-50 text-red-700 px-4 py-3">
-          {err}
+          {error}
         </div>
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* LEFT: form */}
+        {/* LEFT SIDE */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-xl border bg-white p-4 space-y-4">
-            {/* Model */}
+            {/* Model Selector */}
             <ModelSelector value={model} onChange={setModel} />
 
             {/* Keywords */}
@@ -129,19 +133,17 @@ export default function InfoArticlePage() {
               <textarea
                 rows={8}
                 className="w-full rounded-lg border px-3 py-2"
-                placeholder="Enter keywords, one per line..."
+                placeholder="Enter keywords (one per line)"
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
               />
               <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                <span>You can paste 500–1000+ lines; each line becomes one article.</span>
-                <span>
-                  {count} keyword{count === 1 ? "" : "s"}
-                </span>
+                <span>You can paste 1000+ lines — each line = 1 article</span>
+                <span>{count} keyword{count !== 1 && "s"}</span>
               </div>
             </div>
 
-            {/* Sections & FAQs */}
+            {/* Sections and FAQs */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Sections</label>
@@ -192,7 +194,7 @@ export default function InfoArticlePage() {
               </label>
             </div>
 
-            {/* Image Source */}
+            {/* Image Settings */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Image Source</label>
@@ -217,23 +219,23 @@ export default function InfoArticlePage() {
             </div>
           </div>
 
-          {/* Publishing Destination (WordPress/Blogger/Editor + Draft/Publish/Schedule) */}
+          {/* Publishing Settings */}
           <PublishingDestination value={publish} onChange={setPublish} />
         </div>
 
-        {/* RIGHT: action */}
+        {/* RIGHT SIDE */}
         <aside className="space-y-4">
           <div className="rounded-xl border bg-white p-4">
             <h4 className="font-semibold mb-2">Ready?</h4>
             <p className="text-sm text-gray-600">
-              System will auto-apply images (with ALT), add meta (if enabled), and schema.
+              This will auto-apply meta, schema, and images (if selected).
             </p>
             <button
-              onClick={start}
+              onClick={startJob}
               disabled={busy}
               className="mt-3 w-full rounded-lg bg-green-600 text-white py-2 disabled:opacity-60"
             >
-              {busy ? "Starting…" : "Start"}
+              {busy ? "Starting…" : "Start Bulk Job"}
             </button>
           </div>
         </aside>

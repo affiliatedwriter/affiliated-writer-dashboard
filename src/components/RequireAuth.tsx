@@ -1,5 +1,4 @@
 "use client";
-
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -10,7 +9,8 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!user) router.push("/login");
-  }, [user]);
+  }, [user, router]);
 
-  return <>{user ? children : null}</>;
+  if (!user) return null;
+  return <>{children}</>;
 }

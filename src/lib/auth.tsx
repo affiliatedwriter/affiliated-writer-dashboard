@@ -1,5 +1,4 @@
 "use client";
-
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 
@@ -45,10 +44,15 @@ export const useAuth = () => {
   return context;
 };
 
-// ✅ Optional helpers for quick role-based checks
+// Utility checks
 export const isAuthed = () => !!localStorage.getItem("authUser");
 export const isAdmin = () => {
   const user = localStorage.getItem("authUser");
   if (!user) return false;
-  return JSON.parse(user)?.role === "admin";
+  try {
+    const parsed = JSON.parse(user);
+    return parsed.role === "admin";
+  } catch {
+    return false;
+  }
 };
