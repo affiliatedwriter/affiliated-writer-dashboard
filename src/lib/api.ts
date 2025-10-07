@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://affiliated-writer-backend.onrender.com/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://affiliated-writer-backend.onrender.com";
 
 export async function apiGet(endpoint: string) {
   const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -21,7 +21,11 @@ export async function apiPost(endpoint: string, body: any) {
 }
 
 export async function logout() {
-  await fetch(`${API_BASE}/auth/logout`, { method: "POST", credentials: "include" });
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
 }
 
-export default { apiGet, apiPost, logout };
+const api = { apiGet, apiPost, logout };
+export default api;

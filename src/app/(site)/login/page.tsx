@@ -13,13 +13,17 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     try {
-      const res = await api.apiPost("/auth/login", { email, password });
-      if (res?.success) router.push("/dashboard");
-      else setError(res?.message || "Login failed");
+      const response = await api.apiPost("/auth/login", { email, password });
+      if (response.success) {
+        router.push("/dashboard");
+      } else {
+        setError(response.message);
+      }
     } catch (err: any) {
       console.error(err);
-      setError("Failed to connect to server");
+      setError("Failed to connect to server.");
     }
   };
 
