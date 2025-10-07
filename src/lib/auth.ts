@@ -1,25 +1,46 @@
-// File: src/lib/auth.ts
-export type User = {
-  name: string;
-  email: string;
-  role: "admin" | "user";
-  token: string;
+"use client";
+import { createContext, useContext, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+interface AuthContextType {
+  user: any;
+  login: (data: any) => void;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("authUser");
+    if (savedUser) setUser(JSON.parse(savedUser));
+  }, []);
+
+  const login = (data: any) => {
+    if (!data?.user) return;
+    setUser(data.user);
+    localStorage.setItem("authUser", JSON.stringify(data.user));
+    router.push("/dashboard");
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("authUser");
+    router.push("/login");
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-export function getUser(): User | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const json = localStorage.getItem("user");
-    return json ? JSON.parse(json) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function isAuthed(): boolean {
-  return !!getUser()?.token;
-}
-
-export function isAdmin(): boolean {
-  return getUser()?.role === "admin";
-}
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
+};
