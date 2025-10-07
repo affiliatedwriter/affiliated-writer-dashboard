@@ -2,24 +2,31 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/api";
+import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("password");
+  const { setUser } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     try {
       const res = await api.post("/api/auth/login", { email, password });
-      console.log("✅ Login success:", res);
+      console.log("Login success:", res);
+
+      localStorage.setItem("user", JSON.stringify(res.user));
+      document.cookie = `token=${res.token}; path=/;`;
+
       router.push("/dashboard");
     } catch (err) {
-      console.error("❌ Login failed:", err);
-      setError("Failed to connect to server");
+      console.error("Login failed:", err);
+      setError("Invalid email or password.");
     }
   };
 

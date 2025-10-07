@@ -1,19 +1,10 @@
-﻿import "./globals.css";
+﻿import { AuthProvider } from "@/context/AuthContext";
 
-export const metadata = {
-  title: "Affiliated Writer",
-  description: "Dashboard for managing AI content",
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        {children}
+      <body>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
