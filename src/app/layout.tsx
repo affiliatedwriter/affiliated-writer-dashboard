@@ -2,8 +2,8 @@
 import { AuthProvider } from "@/lib/auth";
 
 export const metadata = {
-  title: "Affiliated Writer",
-  description: "Writer Dashboard",
+  title: "Affiliated Writer Dashboard",
+  description: "Manage your affiliated content",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

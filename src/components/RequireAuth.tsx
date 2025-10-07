@@ -8,7 +8,10 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   const router = useRouter();
 
   useEffect(() => {
-    if (!user) router.push("/login");
+    if (!user) {
+      const saved = localStorage.getItem("authUser");
+      if (!saved) router.push("/login");
+    }
   }, [user, router]);
 
   if (!user) return null;

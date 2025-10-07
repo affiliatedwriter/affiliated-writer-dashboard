@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface AuthContextType {
@@ -10,24 +10,31 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const router = useRouter();
 
+  // Restore user from localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem("authUser");
-    if (savedUser) setUser(JSON.parse(savedUser));
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("authUser");
+      if (saved) setUser(JSON.parse(saved));
+    }
   }, []);
 
   const login = (data: any) => {
     setUser(data.user);
-    localStorage.setItem("authUser", JSON.stringify(data.user));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("authUser", JSON.stringify(data.user));
+    }
     router.push("/dashboard");
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("authUser");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("authUser");
+    }
     router.push("/login");
   };
 
@@ -39,19 +46,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 };
 
-// Utility checks
-export const isAuthed = () => !!localStorage.getItem("authUser");
+// Helper functions for protection
+export const isAuthed = () =>
+  typeof window !== "undefined" && !!localStorage.getItem("authUser");
+
 export const isAdmin = () => {
-  const user = localStorage.getItem("authUser");
-  if (!user) return false;
+  if (typeof window === "undefined") return false;
+  const u = localStorage.getItem("authUser");
+  if (!u) return false;
   try {
-    const parsed = JSON.parse(user);
-    return parsed.role === "admin";
+    const parsed = JSON.parse(u);
+    return parsed?.role === "admin";
   } catch {
     return false;
   }
