@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://affiliated-writer-backend.onrender.com";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://affiliated-writer-backend.onrender.com/api";
 
 export async function apiGet(endpoint: string) {
   const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -26,6 +26,3 @@ export async function logout() {
     credentials: "include",
   });
 }
-
-const api = { apiGet, apiPost, logout };
-export default api;
