@@ -1,36 +1,24 @@
 "use client";
 
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/lib/auth";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
 
-  if (!user) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-gray-500 text-lg">Loading...</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!user) router.push("/login");
+    else if (user.role === "admin") router.push("/admin");
+  }, [user, router]);
 
-  // 🔐 Role-based access view
-  if (user.role === "admin") {
-    return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-4 text-center">Admin Dashboard</h1>
-        <p className="text-gray-600 text-center">
-          Welcome {user.name}! You have full access to all management tools.
-        </p>
-      </div>
-    );
-  }
+  if (!user) return null;
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-4 text-center">User Dashboard</h1>
-      <p className="text-gray-600 text-center">
-        Welcome {user.name}! You can view your articles and analytics.
-      </p>
+    <div className="p-10">
+      <h1 className="text-3xl font-semibold">Welcome, {user.name}!</h1>
+      <p className="text-gray-600 mt-2">This is your user dashboard.</p>
     </div>
   );
 }

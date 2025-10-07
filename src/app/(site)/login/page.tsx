@@ -1,29 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import api from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: any) => {
     e.preventDefault();
-    setError("");
-
     try {
-      const res = await api.post("/api/auth/login", { email, password });
-      console.log("Login success:", res);
-    } catch (err) {
-      console.error("Login failed:", err);
-      setError("Failed to login");
+      const res = await fetch(
+        "https://affiliated-writer-backend.onrender.com/api/auth/login",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login failed");
+
+      login(data); // ✅ এখানেই AuthContext এ ইউজার সেট হবে
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
-      <div className="bg-white shadow-lg rounded-2xl p-8 w-[400px]">
+    <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="bg-white shadow-lg rounded-xl p-8 w-[400px]">
         <h2 className="text-center text-2xl font-semibold mb-4">Login</h2>
         {error && <p className="text-red-500 text-center mb-3">{error}</p>}
         <form onSubmit={handleLogin}>
