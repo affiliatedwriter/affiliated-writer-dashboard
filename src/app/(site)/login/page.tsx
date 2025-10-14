@@ -1,70 +1,51 @@
-// src/app/(site)/login/page.tsx
-"use client";
+// src/app/login/page.tsx
+'use client';
 
-import { useState } from "react";
-import { apiPost } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
+import { useState } from 'react';
+import { api } from '@/lib/api';
 
 export default function LoginPage() {
-  const { login } = useAuth();
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("password");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('admin@example.com');
+  const [password, setPassword] = useState('password');
+  const [msg, setMsg] = useState<string>('');
 
-  async function handleSubmit(e: React.FormEvent) {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
+    setMsg('…');
     try {
-      // ✅ backend route: /api/auth/login
-      const res = await apiPost("/api/auth/login", { email, password });
-
-      // backend থেকে যদি role না আসে, ডিফল্ট user ধরা হলো
-      const user = { role: "user", ...(res?.user || {}), email };
-      login({ user });
-    } catch (err: any) {
-      setError(err?.message || "Login failed");
-    } finally {
-      setLoading(false);
+      const data = await api.login(email, password);
+      setMsg('Login OK: ' + JSON.stringify(data));
+    } catch (e: any) {
+      setMsg('Login failed: ' + e.message);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white shadow rounded-xl p-8 w-[400px]">
-        <h2 className="text-center text-2xl font-semibold mb-4">Login</h2>
-        {error && (
-          <p className="text-red-600 text-center text-sm mb-3">{error}</p>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="email"
-            autoComplete="username"
-            className="w-full border px-4 py-2 rounded-md"
-            placeholder="admin@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            autoComplete="current-password"
-            className="w-full border px-4 py-2 rounded-md"
-            placeholder="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button
-            disabled={loading}
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
-          >
-            {loading ? "Signing in..." : "Login"}
-          </button>
-        </form>
-      </div>
-    </div>
+    <main className="min-h-screen grid place-items-center p-4">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-sm space-y-3 rounded border p-4"
+      >
+        <h1 className="text-xl font-semibold">Login</h1>
+        <input
+          className="w-full rounded border px-3 py-2"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="email"
+        />
+        <input
+          className="w-full rounded border px-3 py-2"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="password"
+        />
+        <button className="w-full rounded bg-blue-600 py-2 text-white">
+          Login
+        </button>
+        <p className="text-sm text-red-600">{msg}</p>
+      </form>
+    </main>
   );
 }

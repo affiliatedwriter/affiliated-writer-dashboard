@@ -1,46 +1,32 @@
-import axios from "axios";
+// src/lib/api.ts
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+type Json = Record<string, any>;
 
-/**
- * ✅ Global Axios instance for API requests
- * Automatically picks up base URL from environment variable.
- * Example: NEXT_PUBLIC_API_BASE=https://affiliated-writer-backend.onrender.com
- */
-const api = axios.create({
-  baseURL:
-    process.env.NEXT_PUBLIC_API_BASE ||
-    "https://affiliated-writer-backend.onrender.com",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true, // important for CORS + cookies
-});
+async function req<T>(
+  path: string,
+  opts: RequestInit = {}
+): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    cache: 'no-store',
+    ...opts,
+  });
 
-/* =========================================================
-   Universal API Helpers (used everywhere)
-   ========================================================= */
+  // CORS/Network ডিবাগ সহজ করার জন্য
+  if (!res.ok) {
+    const txt = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${txt || res.statusText}`);
+  }
+  return res.json() as Promise<T>;
+}
 
-/** ✅ GET request */
-export const apiGet = async (endpoint: string) => {
-  const res = await api.get(endpoint);
-  return res.data;
+export const api = {
+  ping: () => req<{ db?: string; result?: unknown; ok?: boolean }>('/api/db/ping'),
+  login: (email: string, password: string) =>
+    req<Json>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
 };
 
-/** ✅ POST request */
-export const apiPost = async (endpoint: string, data: any) => {
-  const res = await api.post(endpoint, data);
-  return res.data;
-};
-
-/** ✅ PUT (for updates) */
-export const apiPut = async (endpoint: string, data: any) => {
-  const res = await api.put(endpoint, data);
-  return res.data;
-};
-
-/** ✅ DELETE (for removals) */
-export const apiDelete = async (endpoint: string) => {
-  const res = await api.delete(endpoint);
-  return res.data;
-};
-
-export default api;
+export { BASE as API_BASE };
