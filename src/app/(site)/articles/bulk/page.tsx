@@ -220,7 +220,10 @@ export default function BulkArticlePage() {
           </div>
 
           {/* Publishing Settings */}
-          <PublishingDestination value={publish as unknown as any} onChange={(v) => setPublish(v as any)} />
+         <PublishingDestination
+  value={publish as unknown as any}
+  onChange={(v) => setPublish(v as any)}
+/>
         </div>
 
         {/* RIGHT SIDE */}
