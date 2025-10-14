@@ -1,17 +1,18 @@
-﻿import AdminSidebar from "@/components/AdminSidebar"; // না থাকলে নিজের Admin সাইডবার কম্পোনেন্ট দিন
-import Sidebar from "@/components/Sidebar";
+﻿// src/app/layout.tsx
+import type { Metadata } from 'next';
+import Providers from './providers';
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const metadata: Metadata = {
+  title: 'Affiliated Writer Dashboard',
+  description: 'Admin & Site UI',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh grid grid-cols-[260px_1fr]">
-      <aside className="border-r bg-white">
-        <AdminSidebar />
-      </aside>
-      <main className="min-h-dvh">{children}</main>
-    </div>
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
   );
 }

@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import api, { apiGet, apiPost } from "@/lib/api";
 
 export default function AdminHome() {
   const { isAuthed, user } = useAuth();

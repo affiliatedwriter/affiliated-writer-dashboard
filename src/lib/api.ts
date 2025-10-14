@@ -1,75 +1,38 @@
 // src/lib/api.ts
-// Simple fetch wrapper for our backend (Render)
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+type JSONBody = Record<string, unknown> | undefined;
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE;
-if (!BASE) {
-  // Build time guard – helps on Vercel
-  // eslint-disable-next-line no-console
-  console.warn("NEXT_PUBLIC_API_BASE is not set!");
-}
-
-type JSONLike = Record<string, any>;
-
-async function fetchJSON<T = any>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
-  const url = `${BASE?.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
-
-  // Default headers
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(init.headers || {}),
-  };
-
+async function request<T = any>(path: string, init?: RequestInit): Promise<T> {
+  const url = path.startsWith('http') ? path : `${BASE}${path}`;
   const res = await fetch(url, {
     ...init,
-    headers,
-    // credentials: "include",  // কুকি দরকার হলে অন করুন (CORS credentials true + non-* origin লাগবে)
-    // mode: "cors",            // ব্রাউজারে ডিফল্ট; রাখতে চাইলে রাখুন
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+    // কুকি/ক্রিডেনশিয়াল লাগলে: credentials: 'include',
   });
-
-  const text = await res.text();
-  const data = text ? (JSON.parse(text) as T) : (undefined as unknown as T);
-
   if (!res.ok) {
-    const msg =
-      (data && (data as any).message) ||
-      res.statusText ||
-      `Request failed: ${res.status}`;
-    throw new Error(msg);
+    const text = await res.text().catch(() => '');
+    throw new Error(`API ${res.status}: ${text || res.statusText}`);
   }
-  return data;
+  // কিছু এন্ডপয়েন্ট empty body দিলে:
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? (await res.json()) as T : (undefined as unknown as T);
 }
 
-// Named helpers
-export function apiGet<T = any>(path: string): Promise<T> {
-  return fetchJSON<T>(path, { method: "GET" });
+export async function apiGet<T = any>(path: string): Promise<T> {
+  return request<T>(path, { method: 'GET' });
 }
 
-export function apiPost<T = any>(path: string, body?: JSONLike): Promise<T> {
-  return fetchJSON<T>(path, {
-    method: "POST",
-    body: body ? JSON.stringify(body) : undefined,
-  });
+export async function apiPost<T = any>(path: string, body?: JSONBody): Promise<T> {
+  return request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
 }
 
-export function apiPut<T = any>(path: string, body?: JSONLike): Promise<T> {
-  return fetchJSON<T>(path, {
-    method: "PUT",
-    body: body ? JSON.stringify(body) : undefined,
-  });
+export async function ping() {
+  return apiGet<{ db: string; result?: unknown }>('/api/db/ping');
 }
 
-export function apiDelete<T = any>(path: string): Promise<T> {
-  return fetchJSON<T>(path, { method: "DELETE" });
-}
-
-// Default export so that `import api, { apiGet } from "@/lib/api"` works.
-const api = {
-  get: apiGet,
-  post: apiPost,
-  put: apiPut,
-  delete: apiDelete,
-};
+// default export (কিছু পেজে default import ব্যবহার হয়েছে)
+const api = { get: apiGet, post: apiPost, ping };
 export default api;

@@ -1,15 +1,14 @@
-﻿"use client";
+﻿// src/app/layout.tsx
+import Providers from "./providers";
 
-import { AuthProvider, isAuthed } from "@/lib/auth";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+export const metadata = { title: "Affiliated Writer" };
 
-export default function SiteLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isAuthed()) router.push("/login");
-  }, []);
-
-  return <AuthProvider>{children}</AuthProvider>;
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
 }

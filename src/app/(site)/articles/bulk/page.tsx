@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination from "@/components/PublishingDestination";
-import { apiPost } from "@/lib/api";
+import api, {  apiPost  } from "@/lib/api";
 
 /* ================= Types ================= */
 type SchemaType = "Review" | "BlogPosting" | "Article";

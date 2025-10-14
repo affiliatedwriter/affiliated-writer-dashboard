@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { api } from '@/lib/api';
+import api, { apiGet, apiPost } from "@/lib/api";
 
 export default function Home() {
   const [out, setOut] = useState<string>('—');
