@@ -1,5 +1,5 @@
 ﻿// src/app/layout.tsx
-import Providers from "./providers";
+import Providers from "@/app/providers";
 
 export const metadata = { title: "Affiliated Writer" };
 

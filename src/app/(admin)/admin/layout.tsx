@@ -1,6 +1,6 @@
 ﻿// src/app/layout.tsx
 import type { Metadata } from 'next';
-import Providers from './providers';
+import Providers from '@/app/providers';
 
 export const metadata: Metadata = {
   title: 'Affiliated Writer Dashboard',
