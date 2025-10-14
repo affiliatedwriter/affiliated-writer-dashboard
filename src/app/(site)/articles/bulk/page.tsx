@@ -5,43 +5,31 @@ import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination from "@/components/PublishingDestination";
 import api, { apiPost } from "@/lib/api";
 
-/* ================= Types (PublishingDestination-এর সাথে মিল রেখে) ================= */
+/* ================= Types ================= */
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
 
-type PublishStatus = "draft" | "publish" | "schedule";
-type PublishMode = "editor" | "wp" | "blogger";
-
-type WordpressTarget = {
-  websiteId: number | null;
+/**
+ * PublishingDestination কম্পোনেন্ট যে টাইপটা ব্যবহার করে
+ * (বিল্ড লগ থেকে রিভার্স-ইঞ্জিনিয়ারড)
+ *
+ * - wp মোডে: siteId, categoryId, status, everyHours (optional)
+ * - blogger মোডে: blogId, everyHours (optional)
+ * - 'editor' মোড নেই, undefined মানে এডিটরে থাকবে
+ */
+type LegacyWp = {
+  mode: "wp";
+  siteId: number | null;
   categoryId: number | null;
-  status: PublishStatus;
+  status: "draft" | "publish";
+  everyHours?: number | null;
 };
-
-type BloggerTarget = {
+type LegacyBlogger = {
+  mode: "blogger";
   blogId: number | null;
-  status: PublishStatus;
+  everyHours?: number | null;
 };
-
-type ScheduleTarget = {
-  everyHours: number | null;
-};
-
-export type PublishTarget = {
-  mode: PublishMode;
-  wordpress?: WordpressTarget;
-  blogger?: BloggerTarget;
-  schedule?: ScheduleTarget;
-};
-
-/* ছোট হেল্পার—wordpress অবজেক্টে সব প্রয়োজনীয় ফিল্ড নিশ্চিত রাখে */
-function normalizeWordpress(p?: Partial<WordpressTarget>): WordpressTarget {
-  return {
-    websiteId: p?.websiteId ?? null,
-    categoryId: p?.categoryId ?? null,
-    status: p?.status ?? "draft",
-  };
-}
+type LegacyPublishTarget = LegacyWp | LegacyBlogger;
 
 /* ================= Component ================= */
 export default function BulkArticlePage() {
@@ -59,11 +47,13 @@ export default function BulkArticlePage() {
   const [imageSource, setImageSource] = useState<ImageSource>("google");
   const [imageCredit, setImageCredit] = useState("");
 
-  /* ========== Publish Options (PublishingDestination-এর শেপে) ========== */
-  const [publish, setPublish] = useState<PublishTarget>({
-    mode: "editor",
-    wordpress: normalizeWordpress(),
-  });
+  /**
+   * PublishingDestination যে ভ্যালু টাইপ চায় সেটা স্টেটে রাখছি।
+   * undefined মানে "editor" (অর্থাৎ এখনই কোনো এক্সটার্নাল পাবলিশ টার্গেট বাছা হয়নি)
+   */
+  const [publish, setPublish] = useState<LegacyPublishTarget | undefined>(
+    undefined
+  );
 
   /* ========== UI State ========== */
   const [busy, setBusy] = useState(false);
@@ -86,35 +76,21 @@ export default function BulkArticlePage() {
     if (sections < 3 || sections > 20) return "Sections must be between 3 and 20.";
     if (faqs < 0 || faqs > 20) return "FAQs must be between 0 and 20.";
 
-    // schedule হলে সময় লাগবে
-    if (publish.mode !== "editor" && publish.schedule?.everyHours != null) {
-      if (publish.schedule.everyHours <= 0) {
+    // schedule হলে সময় লাগবে (wp বা blogger – দুটিতেই everyHours থাকতে পারে)
+    if (publish?.mode === "wp" || publish?.mode === "blogger") {
+      if (publish.everyHours != null && publish.everyHours <= 0) {
         return "Enter a valid schedule time in hours (> 0).";
       }
     }
-    // WordPress হলে প্রয়োজনীয় ফিল্ড থাকুক
-    if (publish.mode === "wp") {
-      const wp = normalizeWordpress(publish.wordpress);
-      if (wp.status !== "schedule") {
-        // draft/publish – category/website যেকোনোটা null হতে পারে, তবে অবজেক্ট শেপ থাকা চাই
-        if (wp.websiteId == null && wp.categoryId == null) {
-          return "Select at least Website or Category for WordPress (or switch mode).";
-        }
-      } else if (!publish.schedule?.everyHours || publish.schedule.everyHours <= 0) {
-        return "For scheduled WordPress publishing, provide 'everyHours' (> 0).";
+    // WordPress হলে ন্যূনতম ইনপুট
+    if (publish?.mode === "wp") {
+      if (publish.siteId == null && publish.categoryId == null) {
+        return "Select at least Website or Category for WordPress (or keep editor mode).";
       }
     }
-    // Blogger হলে ব্লগ আইডি চেক
-    if (publish.mode === "blogger") {
-      if (!publish.blogger?.blogId) {
-        return "Select a Blogger blog.";
-      }
-      if (
-        publish.blogger.status === "schedule" &&
-        (!publish.schedule?.everyHours || publish.schedule.everyHours <= 0)
-      ) {
-        return "For scheduled Blogger publishing, provide 'everyHours' (> 0).";
-      }
+    // Blogger হলে ব্লগ আইডি লাগবে
+    if (publish?.mode === "blogger" && !publish.blogId) {
+      return "Select a Blogger blog.";
     }
 
     return null;
@@ -132,7 +108,36 @@ export default function BulkArticlePage() {
     try {
       setBusy(true);
 
-      // ব্যাকএন্ডে পাঠানোর পে-লোড — integrations.publish আগে যেটা ছিল তার মতোই
+      // ব্যাকএন্ডের জন্য অ্যাডাপ্ট করা publish payload
+      // (আমরা আগের মতো integrations.publish শেপে পাঠাচ্ছি)
+      const adaptedPublish =
+        publish == null
+          ? { mode: "editor" as const }
+          : publish.mode === "wp"
+          ? {
+              mode: "wp" as const,
+              wordpress: {
+                websiteId: publish.siteId ?? null,
+                categoryId: publish.categoryId ?? null,
+                status: publish.status,
+              },
+              schedule:
+                publish.everyHours != null
+                  ? { everyHours: publish.everyHours }
+                  : undefined,
+            }
+          : {
+              mode: "blogger" as const,
+              blogger: {
+                blogId: publish.blogId ?? null,
+                status: "publish" as const, // blogger UI-তে status না থাকলে ডিফল্ট publish
+              },
+              schedule:
+                publish.everyHours != null
+                  ? { everyHours: publish.everyHours }
+                  : undefined,
+            };
+
       const payload = {
         type: "bulk_article",
         model,
@@ -146,7 +151,7 @@ export default function BulkArticlePage() {
           image_credit: imageCredit || null,
         },
         integrations: {
-          publish,
+          publish: adaptedPublish,
         },
       };
 
@@ -274,18 +279,7 @@ export default function BulkArticlePage() {
 
           {/* Publishing Settings */}
           <div className="rounded-xl border bg-white p-4">
-            <PublishingDestination
-              value={publish}
-              onChange={(v) => {
-                // wp অবজেক্ট সবসময় পূর্ণ শেপে রাখি
-                const next: PublishTarget = {
-                  ...v,
-                  wordpress:
-                    v.mode === "wp" ? normalizeWordpress(v.wordpress) : v.wordpress,
-                };
-                setPublish(next);
-              }}
-            />
+            <PublishingDestination value={publish} onChange={setPublish} />
           </div>
         </div>
 
