@@ -1,8 +1,19 @@
 // src/lib/supabase.ts
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(url, anon);
-export default supabase;
+// একটাই শেয়ার্ড ক্লায়েন্ট
+export const supabase = createClient(url, anon, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
+
+export type AppUser = {
+  id: string;
+  email: string | null;
+};
