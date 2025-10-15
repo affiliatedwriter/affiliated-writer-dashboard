@@ -1,80 +1,51 @@
-// File: src/app/(site)/login/page.tsx
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string>("");
+  const [msg, setMsg] = useState("");
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMsg("");
-    setBusy(true);
+    setMsg("…");
+
     try {
-      // api.login নেই, তাই api.post ব্যবহার করি
-      const res = await api.post("/api/auth/login", { email, password });
-
-      // চাইলে টোকেন/ইউজার লোকালস্টোরেজে রাখতে পারো
-      // localStorage.setItem("auth", JSON.stringify(res));
-
-      setMsg("✅ Login successful");
-      // লগইন হলে ড্যাশবোর্ডে পাঠাতে চাইলে:
-      router.push("/dashboard");
-    } catch (err: any) {
-      setMsg(err?.message || "Login failed");
-    } finally {
-      setBusy(false);
+      // আপনার ব্যাকএন্ডে যেটা আছে সেটা দিন:
+      // common: /api/auth/login  অথবা /api/login
+      const data = await api.post("/api/auth/login", { email, password });
+      setMsg("Login OK");
+      // সফল হলে যেখানে যেতে চান:
+      router.replace("/dashboard"); // বা "/admin"
+    } catch (e: any) {
+      setMsg(e?.message || "Login failed");
     }
   };
 
   return (
-    <div className="mx-auto max-w-sm p-6">
-      <h1 className="mb-4 text-xl font-semibold">Sign in</h1>
-
-      {msg && (
-        <div className="mb-3 rounded border px-3 py-2 text-sm">
-          {msg}
-        </div>
-      )}
-
-      <form onSubmit={onSubmit} className="space-y-3">
-        <div>
-          <label className="mb-1 block text-sm">Email</label>
-          <input
-            type="email"
-            className="w-full rounded border px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm">Password</label>
-          <input
-            type="password"
-            className="w-full rounded border px-3 py-2"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full rounded bg-green-600 px-3 py-2 text-white disabled:opacity-60"
-        >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
+    <div className="p-6 max-w-md mx-auto">
+      <h2 className="text-xl font-semibold mb-4">Login</h2>
+      <form onSubmit={submit} className="space-y-3">
+        <input
+          className="w-full rounded border px-3 py-2"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          className="w-full rounded border px-3 py-2"
+          placeholder="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button className="w-full rounded bg-green-600 text-white py-2">Sign in</button>
       </form>
+      {msg && <p className="text-sm mt-3">{msg}</p>}
     </div>
   );
 }

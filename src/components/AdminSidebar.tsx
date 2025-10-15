@@ -2,33 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Route } from "next";
 
-function NavItem({ href, label }: { href: string; label: string }) {
-  const path = usePathname();
-  const active = path === href || path.startsWith(href + "/");
-  return (
-    <Link
-      href={href}
-      className={`block px-3 py-2 text-sm rounded-md transition ${
-        active
-          ? "bg-gray-100 font-semibold text-gray-900"
-          : "text-gray-700 hover:bg-gray-50"
-      }`}
-    >
-      {label}
-    </Link>
-  );
-}
+type Item = { label: string; href: Route<string> };
+
+const NAV: Item[] = [
+  { label: "Dashboard", href: "/admin" as Route<string> },
+  { label: "Settings",  href: "/admin/settings" as Route<string> },
+  { label: "Credits",   href: "/admin/credits" as Route<string> },
+  { label: "Prompts",   href: "/prompts" as Route<string> },
+  { label: "Feature Flags", href: "/admin/feature-flags" as Route<string> },
+  { label: "Templates", href: "/admin/comparison-templates" as Route<string> },
+];
 
 export default function AdminSidebar() {
+  const pathname = usePathname();
+
   return (
-    <aside className="h-screen w-64 bg-white border-r overflow-y-auto">
-      <div className="p-4 font-semibold text-lg">⚡ Admin Panel</div>
-      <nav className="px-2 space-y-1">
-        <NavItem href="/admin/settings" label="Settings" />
-        <NavItem href="/admin/prompt-templates" label="Prompt Templates" />
-        <NavItem href="/admin/feature-flags" label="Feature Flags" />
-        <NavItem href="/admin/credits" label="Credits Manager" />
+    <aside className="w-60 border-r bg-white p-3">
+      <nav className="space-y-1">
+        {NAV.map((it) => {
+          const active = pathname === it.href || pathname?.startsWith(it.href);
+          return (
+            <Link
+              key={it.href}
+              href={it.href}
+              className={`block px-3 py-2 text-sm rounded-md transition ${
+                active ? "bg-gray-100 font-semibold text-gray-900" : "hover:bg-gray-50 text-gray-700"
+              }`}
+            >
+              {it.label}
+            </Link>
+          );
+        })}
       </nav>
     </aside>
   );
