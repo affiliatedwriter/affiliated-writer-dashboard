@@ -351,8 +351,7 @@ export default function AmazonSinglePage() {
                           categoryId: p.wordpress?.categoryId ?? null,
                         },
                       }));
-                    }
-                  >
+                    >
                     <option value="">— Select —</option>
                     {wpSites.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -440,8 +439,7 @@ export default function AmazonSinglePage() {
                           blogId: e.target.value ? Number(e.target.value) : null,
                         },
                       }));
-                    }
-                  >
+                    >
                     <option value="">— Select —</option>
                     {blogs.map((b) => (
                       <option key={b.id} value={b.id}>
