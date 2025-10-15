@@ -100,7 +100,7 @@ export default function AmazonSinglePage() {
       setWpCats([]);
       setPublish((p) => ({
         ...p,
-        wordpress: { ...(p.wordpress || { status: "draft" }), categoryId: null },
+        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }) }, categoryId: null },
       }));
       return;
     }
@@ -130,7 +130,7 @@ export default function AmazonSinglePage() {
 
   /* ---------- Helpers ---------- */
   const setWpStatus = (status: PublishStatus) =>
-    setPublish((p) => ({ ...p, wordpress: { ...(p.wordpress || { websiteId: null }), status } }));
+    setPublish((p) => ({ ...p, wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }), status } }));
 
   const setBlogStatus = (status: PublishStatus) =>
     setPublish((p) => ({ ...p, blogger: { ...(p.blogger || { blogId: null }), status } }));
@@ -346,8 +346,7 @@ export default function AmazonSinglePage() {
                     onChange={(e) =>
                       setPublish((p) => ({
                         ...p,
-                        wordpress: {
-                          ...(p.wordpress || { status: "draft" }),
+                        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }) },
                           websiteId: e.target.value ? Number(e.target.value) : null,
                           categoryId: p.wordpress?.categoryId ?? null,
                         },

@@ -510,8 +510,7 @@ export default function AmazonBulkPage() {
                     onChange={(e) =>
                       setPublish((p) => ({
                         ...p,
-                        wordpress: {
-                          ...(p.wordpress || { status: "draft" }),
+                        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }) },
                           websiteId: e.target.value ? Number(e.target.value) : 0,
                           categoryId: p.wordpress?.categoryId ?? 0,
                         },
