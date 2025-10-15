@@ -1,273 +1,160 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import usePublishOptions, {
-  asOptions,
-  WordPressSite,
-  BloggerBlog,
-} from "@/lib/usePublishOptions";
-
-/** প্যারেন্ট থেকে যে শেপটা নেবো/দিবো */
-export type PublishTarget =
-  | { mode: "none" }
-  | {
-      mode: "wp";
-      siteId: number | null;
-      categoryId: number | null; // আপাতত default_category_id-ই দেখাবো
-      status: "draft" | "publish";
-      everyHours?: number | null; // schedule hours
-    }
-  | { mode: "blogger"; blogId: number | null; everyHours?: number | null };
+import React from "react";
+import {
+  PublishTarget,
+  PublishMode,
+  PublishStatus,
+  isWp,
+  isBlogger,
+} from "@/lib/types";
 
 type Props = {
-  value?: PublishTarget;
-  onChange: (v: PublishTarget) => void;
-  className?: string;
+  value: PublishTarget;
+  onChange: (next: PublishTarget) => void;
 };
 
-const empty: PublishTarget = { mode: "none" };
+const statuses: PublishStatus[] = ["draft", "publish"];
 
-export default function PublishingDestination({ value = empty, onChange, className }: Props) {
-  const [tab, setTab] = useState<PublishTarget["mode"]>(value.mode ?? "none");
+export default function PublishingDestination({ value, onChange }: Props) {
+  const setMode = (m: PublishMode) => {
+    if (m === value.mode) return;
 
-  useEffect(() => {
-    setTab(value.mode ?? "none");
-  }, [value.mode]);
+    if (m === "none") return onChange({ mode: "none" });
 
-  const { wp, blogger, loading, error, reload } = usePublishOptions();
-
-  const wpOptions = useMemo(() => asOptions<WordPressSite>(wp), [wp]);
-  const bloggerOptions = useMemo(() => asOptions<BloggerBlog>(blogger), [blogger]);
-
-  const switchMode = (m: PublishTarget["mode"]) => {
-    setTab(m);
-    if (m === "wp")
-      onChange({
+    if (m === "wp") {
+      // full WP shape so that TS happy everywhere
+      return onChange({
         mode: "wp",
         siteId: null,
         categoryId: null,
         status: "draft",
         everyHours: null,
       });
-    else if (m === "blogger")
-      onChange({ mode: "blogger", blogId: null, everyHours: null });
-    else onChange({ mode: "none" });
+    }
+
+    // blogger
+    return onChange({
+      mode: "blogger",
+      blogId: null,
+      status: "draft",
+      everyHours: null,
+    });
+  };
+
+  const setStatus = (s: PublishStatus) => {
+    if (isWp(value)) onChange({ ...value, status: s });
+    else if (isBlogger(value)) onChange({ ...value, status: s });
+  };
+
+  const setEveryHours = (hrs: number | null) => {
+    if (isWp(value)) onChange({ ...value, everyHours: hrs });
+    else if (isBlogger(value)) onChange({ ...value, everyHours: hrs });
   };
 
   return (
-    <div className={className}>
-      <div className="flex gap-2 mb-3">
-        <button
-          type="button"
-          onClick={() => switchMode("wp")}
-          className={`px-3 py-1.5 rounded border ${
-            tab === "wp" ? "bg-blue-50 border-blue-300" : "bg-white"
-          }`}
-        >
-          WordPress
-        </button>
-        <button
-          type="button"
-          onClick={() => switchMode("blogger")}
-          className={`px-3 py-1.5 rounded border ${
-            tab === "blogger" ? "bg-blue-50 border-blue-300" : "bg-white"
-          }`}
-        >
-          Blogger
-        </button>
-        <button
-          type="button"
-          onClick={() => switchMode("none")}
-          className={`px-3 py-1.5 rounded border ${
-            tab === "none" ? "bg-blue-50 border-blue-300" : "bg-white"
-          }`}
-        >
-          Editor (Save only)
-        </button>
-
-        {error ? (
-          <button
-            type="button"
-            className="ml-auto text-xs text-red-600 underline"
-            onClick={() => reload()}
+    <div className="space-y-4">
+      <div className="grid md:grid-cols-3 gap-4">
+        {/* Mode */}
+        <div>
+          <label className="block text-sm mb-1">Publish to</label>
+          <select
+            className="w-full rounded-lg border px-3 py-2"
+            value={value.mode}
+            onChange={(e) => setMode(e.target.value as PublishMode)}
           >
-            Retry load
-          </button>
-        ) : null}
-      </div>
+            <option value="none">Editor only</option>
+            <option value="wp">WordPress</option>
+            <option value="blogger">Blogger</option>
+          </select>
+        </div>
 
-      {tab === "wp" && (
-        <div className="space-y-3">
-          {/* Site */}
+        {/* Status (wp/blogger) */}
+        {(isWp(value) || isBlogger(value)) && (
           <div>
-            <label className="text-sm font-medium">Select WordPress Website</label>
+            <label className="block text-sm mb-1">Status</label>
             <select
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-              disabled={loading}
-              value={
-                value.mode === "wp" && value.siteId != null ? String(value.siteId) : ""
-              }
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                onChange({
-                  mode: "wp",
-                  siteId: v,
-                  categoryId:
-                    v != null
-                      ? (wp.find((x) => x.id === v)?.default_category_id ?? null)
-                      : null,
-                  status: value.mode === "wp" ? value.status : "draft",
-                  everyHours: value.mode === "wp" ? value.everyHours ?? null : null,
-                });
-              }}
+              className="w-full rounded-lg border px-3 py-2"
+              value={value.status}
+              onChange={(e) => setStatus(e.target.value as PublishStatus)}
             >
-              <option value="">{loading ? "Loading…" : "— Choose Website —"}</option>
-              {wpOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
+              {statuses.map((s) => (
+                <option key={s} value={s}>
+                  {s}
                 </option>
               ))}
             </select>
-            {(!loading && wpOptions.length === 0) && (
-              <p className="mt-1 text-xs text-gray-500">
-                No websites saved. Add from <b>Website And Api</b>.
-              </p>
-            )}
           </div>
+        )}
 
-          {/* Category (default only for now) */}
+        {/* Schedule hours (optional, shared) */}
+        {(isWp(value) || isBlogger(value)) && (
           <div>
-            <label className="text-sm font-medium">Choose Category</label>
-            <select
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-              disabled={loading || !(value.mode === "wp" && value.siteId)}
-              value={
-                value.mode === "wp" && value.categoryId != null
-                  ? String(value.categoryId)
-                  : ""
-              }
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                if (value.mode === "wp")
-                  onChange({ ...value, categoryId: v });
-              }}
-            >
-              <option value="">
-                {loading ? "Loading…" : "— Choose Category —"}
-              </option>
-              {value.mode === "wp" &&
-                value.siteId != null && (
-                  <option
-                    value={
-                      wp.find((x) => x.id === value.siteId)?.default_category_id ?? ""
-                    }
-                  >
-                    Default Category
-                  </option>
-                )}
-            </select>
-            <p className="mt-1 text-xs text-gray-500">
-              (Category list API পরে যোগ করতে পারবেন। এখন default category থাকবে।)
-            </p>
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="text-sm font-medium">Publishing Status</label>
-            <select
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-              disabled={loading || value.mode !== "wp"}
-              value={value.mode === "wp" ? value.status : "draft"}
-              onChange={(e) => {
-                if (value.mode === "wp")
-                  onChange({ ...value, status: e.target.value as "draft" | "publish" });
-              }}
-            >
-              <option value="draft">Draft</option>
-              <option value="publish">Publish</option>
-            </select>
-          </div>
-
-          {/* Schedule every N hours */}
-          <div>
-            <label className="text-sm font-medium">Schedule (every N hours)</label>
+            <label className="block text-sm mb-1">Every Hours (optional)</label>
             <input
               type="number"
-              min={1}
-              placeholder="e.g. 6"
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-              disabled={loading || value.mode !== "wp"}
-              value={
-                value.mode === "wp" && value.everyHours != null
-                  ? String(value.everyHours)
-                  : ""
-              }
+              min={0}
+              className="w-full rounded-lg border px-3 py-2"
+              value={value.everyHours ?? 0}
               onChange={(e) => {
-                const n = e.target.value ? Number(e.target.value) : null;
-                if (value.mode === "wp") onChange({ ...value, everyHours: n });
+                const num = Number(e.target.value);
+                setEveryHours(Number.isFinite(num) && num > 0 ? num : null);
               }}
             />
-            <p className="mt-1 text-xs text-gray-500">
-              শিডিউল দিলে সিস্টেম প্রতি <b>N</b> ঘন্টা পরপর কিউ করা পোস্ট পাবলিশ করবে।
-            </p>
+          </div>
+        )}
+      </div>
+
+      {/* WP specific inputs */}
+      {isWp(value) && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm mb-1">WP Site ID</label>
+            <input
+              type="number"
+              className="w-full rounded-lg border px-3 py-2"
+              value={value.siteId ?? ""}
+              onChange={(e) =>
+                onChange({ ...value, siteId: numOrNull(e.target.value) })
+              }
+              placeholder="e.g. 123"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">WP Category ID</label>
+            <input
+              type="number"
+              className="w-full rounded-lg border px-3 py-2"
+              value={value.categoryId ?? ""}
+              onChange={(e) =>
+                onChange({ ...value, categoryId: numOrNull(e.target.value) })
+              }
+              placeholder="e.g. 5"
+            />
           </div>
         </div>
       )}
 
-      {tab === "blogger" && (
-        <div className="space-y-3">
-          {/* Blog */}
-          <div>
-            <label className="text-sm font-medium">Select Blogger</label>
-            <select
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-              disabled={loading}
-              value={
-                value.mode === "blogger" && value.blogId != null
-                  ? String(value.blogId)
-                  : ""
-              }
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                onChange({ mode: "blogger", blogId: v, everyHours: value.everyHours ?? null });
-              }}
-            >
-              <option value="">{loading ? "Loading…" : "— Choose Blog —"}</option>
-              {bloggerOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            {(!loading && bloggerOptions.length === 0) && (
-              <p className="mt-1 text-xs text-gray-500">
-                No blogger sites saved. Add from <b>Website And Api</b>.
-              </p>
-            )}
-          </div>
-
-          {/* Schedule every N hours */}
-          <div>
-            <label className="text-sm font-medium">Schedule (every N hours)</label>
-            <input
-              type="number"
-              min={1}
-              placeholder="e.g. 6"
-              className="w-full border rounded px-3 py-2 text-sm mt-1"
-              disabled={loading || value.mode !== "blogger"}
-              value={
-                value.mode === "blogger" && value.everyHours != null
-                  ? String(value.everyHours)
-                  : ""
-              }
-              onChange={(e) => {
-                const n = e.target.value ? Number(e.target.value) : null;
-                if (value.mode === "blogger") onChange({ ...value, everyHours: n });
-              }}
-            />
-          </div>
+      {/* Blogger specific inputs */}
+      {isBlogger(value) && (
+        <div>
+          <label className="block text-sm mb-1">Blogger Blog ID</label>
+          <input
+            type="number"
+            className="w-full rounded-lg border px-3 py-2"
+            value={value.blogId ?? ""}
+            onChange={(e) =>
+              onChange({ ...value, blogId: numOrNull(e.target.value) })
+            }
+            placeholder="e.g. 987654321"
+          />
         </div>
       )}
     </div>
   );
+}
+
+function numOrNull(v: string): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }

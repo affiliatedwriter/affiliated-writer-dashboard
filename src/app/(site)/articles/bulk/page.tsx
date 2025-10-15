@@ -3,63 +3,38 @@
 import React, { useMemo, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination from "@/components/PublishingDestination";
-import api, { apiPost } from "@/lib/api";
+import { PublishTarget } from "@/lib/types";
+import { apiPost } from "@/lib/api";
 
-/* ================= Types ================= */
+/* ============== Local UI-only types ============== */
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
 
-/**
- * PublishingDestination কম্পোনেন্ট যে টাইপটা ব্যবহার করে
- * (বিল্ড লগ থেকে রিভার্স-ইঞ্জিনিয়ারড)
- *
- * - wp মোডে: siteId, categoryId, status, everyHours (optional)
- * - blogger মোডে: blogId, everyHours (optional)
- * - 'editor' মোড নেই, undefined মানে এডিটরে থাকবে
- */
-type LegacyWp = {
-  mode: "wp";
-  siteId: number | null;
-  categoryId: number | null;
-  status: "draft" | "publish";
-  everyHours?: number | null;
-};
-type LegacyBlogger = {
-  mode: "blogger";
-  blogId: number | null;
-  everyHours?: number | null;
-};
-type LegacyPublishTarget = LegacyWp | LegacyBlogger;
-
-/* ================= Component ================= */
+/* ============== Page Component ============== */
 export default function BulkArticlePage() {
-  /* ========== Inputs ========== */
+  /* ----- Inputs ----- */
   const [model, setModel] = useState("chatgpt");
   const [keywords, setKeywords] = useState("");
   const [sections, setSections] = useState(5);
   const [faqs, setFaqs] = useState(5);
 
-  /* ========== Schema & Meta ========== */
+  /* ----- Schema & Meta ----- */
   const [schema, setSchema] = useState<SchemaType>("BlogPosting");
   const [useMeta, setUseMeta] = useState(true);
 
-  /* ========== Images ========== */
+  /* ----- Images ----- */
   const [imageSource, setImageSource] = useState<ImageSource>("google");
   const [imageCredit, setImageCredit] = useState("");
 
-  /**
-   * PublishingDestination যে ভ্যালু টাইপ চায় সেটা স্টেটে রাখছি।
-   * undefined মানে "editor" (অর্থাৎ এখনই কোনো এক্সটার্নাল পাবলিশ টার্গেট বাছা হয়নি)
-   */
-  const [publish, setPublish] = useState<LegacyPublishTarget | undefined>(
-    undefined
-  );
+  /* ----- Publish (NEW TYPES) ----- */
+  // IMPORTANT: no union with undefined here.
+  const [publish, setPublish] = useState<PublishTarget>({ mode: "none" });
 
-  /* ========== UI State ========== */
+  /* ----- UI State ----- */
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  /* ========== Derived Data ========== */
+  /* ----- Derived ----- */
   const keywordList = useMemo(
     () =>
       keywords
@@ -70,73 +45,33 @@ export default function BulkArticlePage() {
   );
   const count = keywordList.length;
 
-  /* ========== Validation ========== */
+  /* ----- Validation ----- */
   const validate = (): string | null => {
     if (!count) return "Please add at least one keyword.";
-    if (sections < 3 || sections > 20) return "Sections must be between 3 and 20.";
+    if (sections < 3 || sections > 20)
+      return "Sections must be between 3 and 20.";
     if (faqs < 0 || faqs > 20) return "FAQs must be between 0 and 20.";
 
-    // schedule হলে সময় লাগবে (wp বা blogger – দুটিতেই everyHours থাকতে পারে)
-    if (publish?.mode === "wp" || publish?.mode === "blogger") {
-      if (publish.everyHours != null && publish.everyHours <= 0) {
+    // schedule হলে ঘণ্টা > 0 হতে হবে (wp/blogger উভয় কেসে)
+    if (publish.mode !== "none" && publish.everyHours !== undefined) {
+      if (publish.everyHours !== null && publish.everyHours <= 0) {
         return "Enter a valid schedule time in hours (> 0).";
       }
     }
-    // WordPress হলে ন্যূনতম ইনপুট
-    if (publish?.mode === "wp") {
-      if (publish.siteId == null && publish.categoryId == null) {
-        return "Select at least Website or Category for WordPress (or keep editor mode).";
-      }
-    }
-    // Blogger হলে ব্লগ আইডি লাগবে
-    if (publish?.mode === "blogger" && !publish.blogId) {
-      return "Select a Blogger blog.";
-    }
-
     return null;
   };
 
-  /* ========== Start Job Handler ========== */
+  /* ----- Start Job ----- */
   const startJob = async () => {
     setError("");
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
+    const v = validate();
+    if (v) {
+      setError(v);
       return;
     }
 
     try {
       setBusy(true);
-
-      // ব্যাকএন্ডের জন্য অ্যাডাপ্ট করা publish payload
-      // (আমরা আগের মতো integrations.publish শেপে পাঠাচ্ছি)
-      const adaptedPublish =
-        publish == null
-          ? { mode: "editor" as const }
-          : publish.mode === "wp"
-          ? {
-              mode: "wp" as const,
-              wordpress: {
-                websiteId: publish.siteId ?? null,
-                categoryId: publish.categoryId ?? null,
-                status: publish.status,
-              },
-              schedule:
-                publish.everyHours != null
-                  ? { everyHours: publish.everyHours }
-                  : undefined,
-            }
-          : {
-              mode: "blogger" as const,
-              blogger: {
-                blogId: publish.blogId ?? null,
-                status: "publish" as const, // blogger UI-তে status না থাকলে ডিফল্ট publish
-              },
-              schedule:
-                publish.everyHours != null
-                  ? { everyHours: publish.everyHours }
-                  : undefined,
-            };
 
       const payload = {
         type: "bulk_article",
@@ -150,22 +85,20 @@ export default function BulkArticlePage() {
           image_source: imageSource,
           image_credit: imageCredit || null,
         },
-        integrations: {
-          publish: adaptedPublish,
-        },
+        integrations: { publish }, // <-- নতুন PublishTarget সরাসরি যাবে
       };
 
       await apiPost("/api/jobs/start", payload);
       alert("✅ Bulk article job created successfully!");
-    } catch (err: any) {
-      console.error("Job creation failed:", err);
-      setError(err?.message || "Failed to start the job.");
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.message ?? "Failed to start the job.");
     } finally {
       setBusy(false);
     }
   };
 
-  /* ========== Render UI ========== */
+  /* ----- Render ----- */
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-xl font-semibold">Bulk Article Generator</h2>
@@ -177,10 +110,10 @@ export default function BulkArticlePage() {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* LEFT SIDE */}
+        {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-xl border bg-white p-4 space-y-4">
-            {/* Model Selector */}
+            {/* Model */}
             <ModelSelector value={model} onChange={setModel} />
 
             {/* Keywords */}
@@ -201,7 +134,7 @@ export default function BulkArticlePage() {
               </div>
             </div>
 
-            {/* Sections and FAQs */}
+            {/* Sections & FAQs */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Sections</label>
@@ -258,7 +191,9 @@ export default function BulkArticlePage() {
                 <label className="block text-sm mb-1">Image Source</label>
                 <select
                   value={imageSource}
-                  onChange={(e) => setImageSource(e.target.value as ImageSource)}
+                  onChange={(e) =>
+                    setImageSource(e.target.value as ImageSource)
+                  }
                   className="w-full rounded-lg border px-3 py-2"
                 >
                   <option value="google">Google</option>
@@ -266,7 +201,9 @@ export default function BulkArticlePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm mb-1">Image Credit (optional)</label>
+                <label className="block text-sm mb-1">
+                  Image Credit (optional)
+                </label>
                 <input
                   className="w-full rounded-lg border px-3 py-2"
                   value={imageCredit}
@@ -283,7 +220,7 @@ export default function BulkArticlePage() {
           </div>
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT */}
         <aside className="space-y-4">
           <div className="rounded-xl border bg-white p-4">
             <h4 className="font-semibold mb-2">Ready?</h4>

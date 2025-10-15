@@ -1,8 +1,36 @@
-export type SettingRow = { id:number; key:string; value:string|null; json:any|null; updated_at:string }; 
-export type SettingsResp = { data: SettingRow[] };
+// Shared publish types used by pages + components
 
-export type FlagRow = { id:number; name:string; enabled:0|1; updated_at:string };
-export type FlagsResp = { data: FlagRow[] };
+export type PublishStatus = "draft" | "publish";
+export type PublishMode = "none" | "wp" | "blogger";
 
-export type PromptTemplate = { id:number; title:string; template:string; variables:string|null; is_active:0|1; created_at:string };
-export type PromptListResp = { data: PromptTemplate[] };
+export type LegacySchedule = {
+  /** optional hours when scheduling is used */
+  everyHours?: number | null;
+};
+
+/** WordPress target */
+export type WpTarget = {
+  mode: "wp";
+  siteId: number | null;
+  categoryId: number | null;
+  status: PublishStatus;
+} & LegacySchedule;
+
+/** Blogger target */
+export type BloggerTarget = {
+  mode: "blogger";
+  blogId: number | null;
+  status: PublishStatus;
+} & LegacySchedule;
+
+/** No external publish – just editor preview/save */
+export type NoneTarget = {
+  mode: "none";
+};
+
+export type PublishTarget = WpTarget | BloggerTarget | NoneTarget;
+
+// Type guards
+export const isWp = (v: PublishTarget): v is WpTarget => v.mode === "wp";
+export const isBlogger = (v: PublishTarget): v is BloggerTarget =>
+  v.mode === "blogger";
