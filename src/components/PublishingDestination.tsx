@@ -1,160 +1,130 @@
+// src/components/PublishingDestination.tsx
 "use client";
 
 import React from "react";
-import {
-  PublishTarget,
-  PublishMode,
-  PublishStatus,
-  isWp,
-  isBlogger,
-} from "@/lib/types";
+import type { PublishTarget, PublishStatus } from "@/lib/types";
 
 type Props = {
   value: PublishTarget;
   onChange: (next: PublishTarget) => void;
 };
 
-const statuses: PublishStatus[] = ["draft", "publish"];
+const statuses: PublishStatus[] = ["draft", "publish", "schedule"];
 
 export default function PublishingDestination({ value, onChange }: Props) {
-  const setMode = (m: PublishMode) => {
-    if (m === value.mode) return;
-
-    if (m === "none") return onChange({ mode: "none" });
-
-    if (m === "wp") {
-      // full WP shape so that TS happy everywhere
-      return onChange({
-        mode: "wp",
-        siteId: null,
-        categoryId: null,
-        status: "draft",
-        everyHours: null,
-      });
-    }
-
-    // blogger
-    return onChange({
-      mode: "blogger",
-      blogId: null,
-      status: "draft",
-      everyHours: null,
-    });
-  };
-
-  const setStatus = (s: PublishStatus) => {
-    if (isWp(value)) onChange({ ...value, status: s });
-    else if (isBlogger(value)) onChange({ ...value, status: s });
-  };
-
-  const setEveryHours = (hrs: number | null) => {
-    if (isWp(value)) onChange({ ...value, everyHours: hrs });
-    else if (isBlogger(value)) onChange({ ...value, everyHours: hrs });
-  };
-
   return (
     <div className="space-y-4">
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Mode */}
-        <div>
-          <label className="block text-sm mb-1">Publish to</label>
-          <select
-            className="w-full rounded-lg border px-3 py-2"
-            value={value.mode}
-            onChange={(e) => setMode(e.target.value as PublishMode)}
-          >
-            <option value="none">Editor only</option>
-            <option value="wp">WordPress</option>
-            <option value="blogger">Blogger</option>
-          </select>
-        </div>
-
-        {/* Status (wp/blogger) */}
-        {(isWp(value) || isBlogger(value)) && (
-          <div>
-            <label className="block text-sm mb-1">Status</label>
-            <select
-              className="w-full rounded-lg border px-3 py-2"
-              value={value.status}
-              onChange={(e) => setStatus(e.target.value as PublishStatus)}
-            >
-              {statuses.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Schedule hours (optional, shared) */}
-        {(isWp(value) || isBlogger(value)) && (
-          <div>
-            <label className="block text-sm mb-1">Every Hours (optional)</label>
-            <input
-              type="number"
-              min={0}
-              className="w-full rounded-lg border px-3 py-2"
-              value={value.everyHours ?? 0}
-              onChange={(e) => {
-                const num = Number(e.target.value);
-                setEveryHours(Number.isFinite(num) && num > 0 ? num : null);
-              }}
-            />
-          </div>
-        )}
+      {/* প্ল্যাটফর্ম */}
+      <div className="grid md:grid-cols-3 gap-3">
+        <button
+          className={`border rounded px-3 py-2 ${value.mode === "none" ? "bg-gray-100" : ""}`}
+          onClick={() => onChange({ mode: "none" })}
+        >
+          None
+        </button>
+        <button
+          className={`border rounded px-3 py-2 ${value.mode === "editor" ? "bg-gray-100" : ""}`}
+          onClick={() => onChange({ mode: "editor" })}
+        >
+          Editor
+        </button>
+        <button
+          className={`border rounded px-3 py-2 ${value.mode === "wp" ? "bg-gray-100" : ""}`}
+          onClick={() =>
+            onChange({
+              mode: "wp",
+              siteId: value.mode === "wp" ? value.siteId : null,
+              categoryId: value.mode === "wp" ? value.categoryId : null,
+              status: value.mode === "wp" ? value.status : "draft",
+            })
+          }
+        >
+          WordPress
+        </button>
+        <button
+          className={`border rounded px-3 py-2 ${value.mode === "blogger" ? "bg-gray-100" : ""}`}
+          onClick={() =>
+            onChange({
+              mode: "blogger",
+              blogId: value.mode === "blogger" ? value.blogId : null,
+              status: value.mode === "blogger" ? value.status : "draft",
+            })
+          }
+        >
+          Blogger
+        </button>
       </div>
 
-      {/* WP specific inputs */}
-      {isWp(value) && (
-        <div className="grid md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm mb-1">WP Site ID</label>
-            <input
-              type="number"
-              className="w-full rounded-lg border px-3 py-2"
-              value={value.siteId ?? ""}
-              onChange={(e) =>
-                onChange({ ...value, siteId: numOrNull(e.target.value) })
-              }
-              placeholder="e.g. 123"
-            />
-          </div>
-          <div>
-            <label className="block text-sm mb-1">WP Category ID</label>
-            <input
-              type="number"
-              className="w-full rounded-lg border px-3 py-2"
-              value={value.categoryId ?? ""}
-              onChange={(e) =>
-                onChange({ ...value, categoryId: numOrNull(e.target.value) })
-              }
-              placeholder="e.g. 5"
-            />
-          </div>
+      {/* কমন স্টেটাস (wp/blogger হলে দেখাই) */}
+      {(value.mode === "wp" || value.mode === "blogger") && (
+        <div className="flex items-center gap-3">
+          <label className="text-sm">Status</label>
+          <select
+            className="border rounded px-2 py-1"
+            value={value.status}
+            onChange={(e) => {
+              const s = e.target.value as PublishStatus;
+              if (value.mode === "wp") onChange({ ...value, status: s });
+              if (value.mode === "blogger") onChange({ ...value, status: s });
+            }}
+          >
+            {statuses.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
         </div>
       )}
 
-      {/* Blogger specific inputs */}
-      {isBlogger(value) && (
-        <div>
-          <label className="block text-sm mb-1">Blogger Blog ID</label>
+      {/* wp extra */}
+      {value.mode === "wp" && (
+        <div className="grid md:grid-cols-2 gap-3">
           <input
+            className="border rounded px-2 py-1"
             type="number"
-            className="w-full rounded-lg border px-3 py-2"
+            placeholder="WordPress Site ID"
+            value={value.siteId ?? ""}
+            onChange={(e) => onChange({ ...value, siteId: Number(e.target.value) || null })}
+          />
+          <input
+            className="border rounded px-2 py-1"
+            type="number"
+            placeholder="Category ID"
+            value={value.categoryId ?? ""}
+            onChange={(e) => onChange({ ...value, categoryId: Number(e.target.value) || null })}
+          />
+        </div>
+      )}
+
+      {/* blogger extra */}
+      {value.mode === "blogger" && (
+        <div>
+          <input
+            className="border rounded px-2 py-1"
+            type="number"
+            placeholder="Blogger Blog ID"
             value={value.blogId ?? ""}
-            onChange={(e) =>
-              onChange({ ...value, blogId: numOrNull(e.target.value) })
-            }
-            placeholder="e.g. 987654321"
+            onChange={(e) => onChange({ ...value, blogId: Number(e.target.value) || null })}
+          />
+        </div>
+      )}
+
+      {/* schedule extra (optionally) */}
+      {(value.mode === "wp" || value.mode === "blogger") && value.status === "schedule" && (
+        <div className="flex items-center gap-3">
+          <label className="text-sm">Every (hours)</label>
+          <input
+            className="border rounded px-2 py-1"
+            type="number"
+            min={1}
+            value={(value as any).everyHours ?? ""}
+            onChange={(e) => {
+              const hours = Number(e.target.value) || null;
+              if (value.mode === "wp") onChange({ ...value, everyHours: hours });
+              if (value.mode === "blogger") onChange({ ...value, everyHours: hours });
+            }}
           />
         </div>
       )}
     </div>
   );
-}
-
-function numOrNull(v: string): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
 }

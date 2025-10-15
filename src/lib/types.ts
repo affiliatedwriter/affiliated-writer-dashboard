@@ -1,36 +1,29 @@
-// Shared publish types used by pages + components
+// src/lib/types.ts
+export type PublishStatus = "draft" | "publish" | "schedule";
+export type PublishMode   = "none" | "editor" | "wp" | "blogger";
 
-export type PublishStatus = "draft" | "publish";
-export type PublishMode = "none" | "wp" | "blogger";
-
-export type LegacySchedule = {
-  /** optional hours when scheduling is used */
-  everyHours?: number | null;
-};
-
-/** WordPress target */
+// WordPress
 export type WpTarget = {
   mode: "wp";
   siteId: number | null;
   categoryId: number | null;
   status: PublishStatus;
-} & LegacySchedule;
+  everyHours?: number | null;
+};
 
-/** Blogger target */
+// Blogger
 export type BloggerTarget = {
   mode: "blogger";
   blogId: number | null;
   status: PublishStatus;
-} & LegacySchedule;
-
-/** No external publish – just editor preview/save */
-export type NoneTarget = {
-  mode: "none";
+  everyHours?: number | null;
 };
 
-export type PublishTarget = WpTarget | BloggerTarget | NoneTarget;
+// শুধু এডিটরে সেভ করার জন্য
+export type EditorTarget = { mode: "editor" };
 
-// Type guards
-export const isWp = (v: PublishTarget): v is WpTarget => v.mode === "wp";
-export const isBlogger = (v: PublishTarget): v is BloggerTarget =>
-  v.mode === "blogger";
+// কিছুই সিলেক্ট না থাকলে
+export type NoneTarget   = { mode: "none" };
+
+// চূড়ান্ত টাইপ
+export type PublishTarget = WpTarget | BloggerTarget | EditorTarget | NoneTarget;

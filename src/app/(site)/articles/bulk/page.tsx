@@ -1,78 +1,82 @@
+// src/app/(site)/articles/bulk/page.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination from "@/components/PublishingDestination";
-import { PublishTarget } from "@/lib/types";
-import { apiPost } from "@/lib/api";
+import api, { apiPost } from "@/lib/api";
+import type { PublishTarget, PublishStatus } from "@/lib/types";
 
-/* ============== Local UI-only types ============== */
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
 
-/* ============== Page Component ============== */
 export default function BulkArticlePage() {
-  /* ----- Inputs ----- */
+  /* Inputs */
   const [model, setModel] = useState("chatgpt");
   const [keywords, setKeywords] = useState("");
   const [sections, setSections] = useState(5);
   const [faqs, setFaqs] = useState(5);
 
-  /* ----- Schema & Meta ----- */
+  /* Meta & images */
   const [schema, setSchema] = useState<SchemaType>("BlogPosting");
   const [useMeta, setUseMeta] = useState(true);
-
-  /* ----- Images ----- */
   const [imageSource, setImageSource] = useState<ImageSource>("google");
   const [imageCredit, setImageCredit] = useState("");
 
-  /* ----- Publish (NEW TYPES) ----- */
-  // IMPORTANT: no union with undefined here.
+  /* Publish unified (union) */
   const [publish, setPublish] = useState<PublishTarget>({ mode: "none" });
 
-  /* ----- UI State ----- */
+  /* UI */
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  /* ----- Derived ----- */
+  /* Derived */
   const keywordList = useMemo(
-    () =>
-      keywords
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean),
+    () => keywords.split("\n").map((s) => s.trim()).filter(Boolean),
     [keywords]
   );
   const count = keywordList.length;
 
-  /* ----- Validation ----- */
+  /* Example: WP সাইট চেঞ্জ করলে category reset — সবসময় ফুল শেপ */
+  const onWpSiteChange = (wid: number | null) => {
+    // ক্যাটালগ/ড্রপডাউন চাইলে আলাদা স্টেট রাখতে পারেন
+    if (!wid) {
+      setPublish((prev) => {
+        if (prev.mode !== "wp") return prev;
+        // status রেখে দিচ্ছি, বাকি দুটো null
+        const status: PublishStatus = prev.status ?? "draft";
+        return { mode: "wp", siteId: null, categoryId: null, status };
+      });
+      return;
+    }
+    setPublish((prev) => {
+      const status: PublishStatus =
+        prev.mode === "wp" && prev.status ? prev.status : "draft";
+      const cat = prev.mode === "wp" ? prev.categoryId ?? null : null;
+      return { mode: "wp", siteId: wid, categoryId: cat, status };
+    });
+  };
+
+  /* Validation */
   const validate = (): string | null => {
     if (!count) return "Please add at least one keyword.";
-    if (sections < 3 || sections > 20)
-      return "Sections must be between 3 and 20.";
+    if (sections < 3 || sections > 20) return "Sections must be between 3 and 20.";
     if (faqs < 0 || faqs > 20) return "FAQs must be between 0 and 20.";
-
-    // schedule হলে ঘণ্টা > 0 হতে হবে (wp/blogger উভয় কেসে)
-    if (publish.mode !== "none" && publish.everyHours !== undefined) {
-      if (publish.everyHours !== null && publish.everyHours <= 0) {
-        return "Enter a valid schedule time in hours (> 0).";
-      }
+    if ((publish.mode === "wp" || publish.mode === "blogger") && publish.status === "schedule") {
+      const hrs = (publish as any).everyHours ?? 0;
+      if (!hrs || hrs <= 0) return "Enter a valid schedule time in hours (> 0).";
     }
     return null;
   };
 
-  /* ----- Start Job ----- */
+  /* Start job */
   const startJob = async () => {
     setError("");
-    const v = validate();
-    if (v) {
-      setError(v);
-      return;
-    }
+    const msg = validate();
+    if (msg) return setError(msg);
 
     try {
       setBusy(true);
-
       const payload = {
         type: "bulk_article",
         model,
@@ -85,20 +89,20 @@ export default function BulkArticlePage() {
           image_source: imageSource,
           image_credit: imageCredit || null,
         },
-        integrations: { publish }, // <-- নতুন PublishTarget সরাসরি যাবে
+        // backend এ একই শেপে পাঠান
+        integrations: { publish },
       };
 
       await apiPost("/api/jobs/start", payload);
       alert("✅ Bulk article job created successfully!");
     } catch (e: any) {
       console.error(e);
-      setError(e?.message ?? "Failed to start the job.");
+      setError(e?.message || "Failed to start the job.");
     } finally {
       setBusy(false);
     }
   };
 
-  /* ----- Render ----- */
   return (
     <div className="p-6 space-y-6">
       <h2 className="text-xl font-semibold">Bulk Article Generator</h2>
@@ -113,7 +117,6 @@ export default function BulkArticlePage() {
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-xl border bg-white p-4 space-y-4">
-            {/* Model */}
             <ModelSelector value={model} onChange={setModel} />
 
             {/* Keywords */}
@@ -128,9 +131,7 @@ export default function BulkArticlePage() {
               />
               <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
                 <span>You can paste 1000+ lines — each line = 1 article</span>
-                <span>
-                  {count} keyword{count !== 1 && "s"}
-                </span>
+                <span>{count} keyword{count !== 1 && "s"}</span>
               </div>
             </div>
 
@@ -139,9 +140,7 @@ export default function BulkArticlePage() {
               <div>
                 <label className="block text-sm mb-1">Sections</label>
                 <input
-                  type="number"
-                  min={3}
-                  max={20}
+                  type="number" min={3} max={20}
                   value={sections}
                   onChange={(e) => setSections(Number(e.target.value))}
                   className="w-full rounded-lg border px-3 py-2"
@@ -150,9 +149,7 @@ export default function BulkArticlePage() {
               <div>
                 <label className="block text-sm mb-1">FAQs</label>
                 <input
-                  type="number"
-                  min={0}
-                  max={20}
+                  type="number" min={0} max={20}
                   value={faqs}
                   onChange={(e) => setFaqs(Number(e.target.value))}
                   className="w-full rounded-lg border px-3 py-2"
@@ -160,7 +157,7 @@ export default function BulkArticlePage() {
               </div>
             </div>
 
-            {/* Schema + Meta */}
+            {/* Schema + meta */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Schema Type</label>
@@ -185,15 +182,13 @@ export default function BulkArticlePage() {
               </label>
             </div>
 
-            {/* Image Settings */}
+            {/* Image settings */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Image Source</label>
                 <select
                   value={imageSource}
-                  onChange={(e) =>
-                    setImageSource(e.target.value as ImageSource)
-                  }
+                  onChange={(e) => setImageSource(e.target.value as ImageSource)}
                   className="w-full rounded-lg border px-3 py-2"
                 >
                   <option value="google">Google</option>
@@ -201,9 +196,7 @@ export default function BulkArticlePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm mb-1">
-                  Image Credit (optional)
-                </label>
+                <label className="block text-sm mb-1">Image Credit (optional)</label>
                 <input
                   className="w-full rounded-lg border px-3 py-2"
                   value={imageCredit}
@@ -217,6 +210,8 @@ export default function BulkArticlePage() {
           {/* Publishing Settings */}
           <div className="rounded-xl border bg-white p-4">
             <PublishingDestination value={publish} onChange={setPublish} />
+            {/* উদাহরণ: কোথাও থেকে সাইট change করলে */}
+            {/* <button onClick={() => onWpSiteChange(null)}>Reset WP Site</button> */}
           </div>
         </div>
 
