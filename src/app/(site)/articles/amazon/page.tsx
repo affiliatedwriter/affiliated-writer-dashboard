@@ -120,7 +120,7 @@ export default function AmazonBulkPage() {
       setPublish((p) => ({
         ...p,
         wordpress: { websiteId: 0, categoryId: 0, status: "draft" },
-      }));
+      }));;
       return;
     }
 
@@ -142,7 +142,7 @@ export default function AmazonBulkPage() {
               : defaultCat,
             status: p.wordpress?.status ?? "draft",
           },
-        }));
+        }));;
       } catch {
         setWpCats([]);
       }
@@ -187,9 +187,9 @@ export default function AmazonBulkPage() {
     setPublish((p) => ({
       ...p,
       wordpress: { ...(p.wordpress || { websiteId: 0, categoryId: 0 }), status },
-    }));
+    }));;
   const setBlogStatus = (status: PublishStatus) =>
-    setPublish((p) => ({ ...p, blogger: { ...(p.blogger || { blogId: null }), status } }));
+    setPublish((p) => ({ ...p, blogger: { ...(p.blogger || { blogId: null }), status } }));;
 
   /* Start job */
   const start = async () => {
@@ -487,7 +487,7 @@ export default function AmazonBulkPage() {
               {(["wordpress", "blogger", "editor"] as PublishMode[]).map((m) => (
                 <button
                   key={m}
-                  onClick={() => setPublish((p) => ({ ...p, mode: m }))}
+                  onClick={() => setPublish((p) => ({ ...p, mode: m }));}
                   className={`rounded border px-3 py-1.5 text-sm ${
                     publish.mode === m ? "bg-gray-100" : "hover:bg-gray-50"
                   }`}
@@ -514,7 +514,7 @@ export default function AmazonBulkPage() {
                           websiteId: e.target.value ? Number(e.target.value) : 0,
                           categoryId: p.wordpress?.categoryId ?? 0,
                         },
-                      }))
+                      }));
                     }
                   >
                     <option value="">— Select —</option>
@@ -540,7 +540,7 @@ export default function AmazonBulkPage() {
                           ...(p.wordpress || { websiteId: 0, status: "draft" }),
                           categoryId: e.target.value ? Number(e.target.value) : 0,
                         },
-                      }))
+                      }));
                     }
                     disabled={!wpCats.length}
                   >
@@ -585,7 +585,7 @@ export default function AmazonBulkPage() {
                             schedule: {
                               everyHours: Math.max(1, Number(e.target.value || 6)),
                             },
-                          }))
+                          }));
                         }
                       />
                     </div>
@@ -611,7 +611,7 @@ export default function AmazonBulkPage() {
                           ...(p.blogger || { status: "draft" }),
                           blogId: e.target.value ? Number(e.target.value) : (null as any),
                         },
-                      }))
+                      }));
                     }
                   >
                     <option value="">— Select —</option>
@@ -655,7 +655,7 @@ export default function AmazonBulkPage() {
                             schedule: {
                               everyHours: Math.max(1, Number(e.target.value || 6)),
                             },
-                          }))
+                          }));
                         }
                       />
                     </div>

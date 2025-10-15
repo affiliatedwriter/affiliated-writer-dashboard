@@ -100,7 +100,7 @@ export default function AmazonSinglePage() {
       setWpCats([]);
       setPublish((p) => ({
         ...p,
-        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }) }, categoryId: null },
+        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }), categoryId: null },
       }));
       return;
     }
