@@ -4,11 +4,18 @@
 import React, { useMemo, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination from "@/components/PublishingDestination";
-import api, { apiPost } from "@/lib/api";
-import type { PublishTarget, PublishStatus } from "@/lib/types";
+import { apiPost } from "@/lib/api";
+import type {
+  PublishTarget,
+  LegacyPublishTarget,
+  PublishStatus,
+} from "@/lib/types";
 
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
+
+/** Component expects: PublishTarget | LegacyPublishTarget | undefined */
+type AnyPublish = PublishTarget | LegacyPublishTarget | undefined;
 
 export default function ManualArticlePage() {
   /* ===== Inputs (single article) ===== */
@@ -24,8 +31,8 @@ export default function ManualArticlePage() {
   const [imageSource, setImageSource] = useState<ImageSource>("google");
   const [imageCredit, setImageCredit] = useState("");
 
-  /* ===== Publish (union shape) ===== */
-  const [publish, setPublish] = useState<PublishTarget>({ mode: "editor" });
+  /* ===== Publish (match component prop types) ===== */
+  const [publish, setPublish] = useState<AnyPublish>(undefined);
 
   /* ===== UI ===== */
   const [busy, setBusy] = useState(false);
@@ -34,23 +41,55 @@ export default function ManualArticlePage() {
   /* ===== Derived ===== */
   const hasTopic = useMemo(() => topic.trim().length > 0, [topic]);
 
+  /* helpers to read common fields from new/legacy shapes */
+  const readMode = (p: AnyPublish): string | undefined =>
+    p ? (p as any).mode ?? ((p as any).wordpress ? "wordpress" : undefined) : undefined;
+
+  const readStatus = (p: AnyPublish): PublishStatus | undefined =>
+    p
+      ? (p as any).status ??
+        (p as any).wordpress?.status ??
+        (p as any).blogger?.status
+      : undefined;
+
+  const readEveryHours = (p: AnyPublish): number | undefined =>
+    p ? (p as any).everyHours ?? (p as any).schedule?.everyHours : undefined;
+
   /* ===== Validation ===== */
   const validate = (): string | null => {
     if (!hasTopic) return "Please enter a topic/title.";
     if (sections < 3 || sections > 20) return "Sections must be between 3 and 20.";
     if (faqs < 0 || faqs > 20) return "FAQs must be between 0 and 20.";
-    if ((publish.mode === "wp" || publish.mode === "blogger") && publish.status === "schedule") {
-      const hrs = (publish as any).everyHours ?? 0;
-      if (!hrs || hrs <= 0) return "Enter a valid schedule time in hours (> 0).";
+
+    if (publish) {
+      const mode = readMode(publish);
+      const status = readStatus(publish);
+
+      // Only the "new" shape supports schedule status; guard by status string
+      if ((mode === "wp" || mode === "wordpress" || mode === "blogger") && status === "schedule") {
+        const hrs = readEveryHours(publish) ?? 0;
+        if (!hrs || hrs <= 0) return "Enter a valid schedule time in hours (> 0).";
+      }
+
+      // Minimal sanity checks for IDs (both shapes)
+      if (mode === "wp") {
+        const siteId = (publish as any).siteId ?? null;
+        const categoryId = (publish as any).categoryId ?? null;
+        if (siteId == null) return "Select a WordPress Site ID.";
+        if (categoryId == null) return "Select a WordPress Category ID.";
+      } else if (mode === "wordpress") {
+        const wp = (publish as any).wordpress || {};
+        if (wp.websiteId == null) return "Select a WordPress Site.";
+        if (wp.categoryId == null) return "Select a WordPress Category.";
+      } else if (mode === "blogger") {
+        const blogId =
+          (publish as any).blogId != null
+            ? (publish as any).blogId
+            : (publish as any).blogger?.blogId ?? null;
+        if (blogId == null) return "Select a Blogger Blog ID.";
+      }
     }
-    // উদাহরণ: wp হলে siteId/categoryId null না হওয়া ভাল
-    if (publish.mode === "wp") {
-      if (publish.siteId == null) return "Select a WordPress Site ID.";
-      if (publish.categoryId == null) return "Select a WordPress Category ID.";
-    }
-    if (publish.mode === "blogger") {
-      if (publish.blogId == null) return "Select a Blogger Blog ID.";
-    }
+
     return null;
   };
 
@@ -76,7 +115,8 @@ export default function ManualArticlePage() {
           image_source: imageSource,
           image_credit: imageCredit || null,
         },
-        integrations: { publish }, // নতুন union শেপ 그대로 পাঠানো হবে
+        // send-through (new or legacy) – backend side already adapted
+        integrations: { publish },
       };
 
       await apiPost("/api/jobs/start", payload);
@@ -103,10 +143,8 @@ export default function ManualArticlePage() {
         {/* LEFT */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-xl border bg-white p-4 space-y-4">
-            {/* Model */}
             <ModelSelector value={model} onChange={setModel} />
 
-            {/* Topic / Title */}
             <div>
               <label className="block text-sm mb-1">Topic / Title</label>
               <input
@@ -117,7 +155,6 @@ export default function ManualArticlePage() {
               />
             </div>
 
-            {/* Optional outline */}
             <div>
               <label className="block text-sm mb-1">Outline (optional)</label>
               <textarea
@@ -125,14 +162,13 @@ export default function ManualArticlePage() {
                 className="w-full rounded-lg border px-3 py-2"
                 value={outline}
                 onChange={(e) => setOutline(e.target.value)}
-                placeholder="- Intro
+                placeholder={`- Intro
 - Key features
 - Pros & Cons
-- Conclusion"
+- Conclusion`}
               />
             </div>
 
-            {/* Sections & FAQs */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Sections</label>
@@ -158,7 +194,6 @@ export default function ManualArticlePage() {
               </div>
             </div>
 
-            {/* Schema + meta */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Schema Type</label>
@@ -183,7 +218,6 @@ export default function ManualArticlePage() {
               </label>
             </div>
 
-            {/* Image settings */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Image Source</label>
@@ -208,7 +242,6 @@ export default function ManualArticlePage() {
             </div>
           </div>
 
-          {/* Publishing Settings */}
           <div className="rounded-xl border bg-white p-4">
             <PublishingDestination value={publish} onChange={setPublish} />
           </div>
