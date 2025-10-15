@@ -350,7 +350,7 @@ export default function AmazonSinglePage() {
                           websiteId: e.target.value ? Number(e.target.value) : null,
                           categoryId: p.wordpress?.categoryId ?? null,
                         },
-                      }))
+                      }));
                     }
                   >
                     <option value="">— Select —</option>
@@ -374,7 +374,7 @@ export default function AmazonSinglePage() {
                           ...(p.wordpress || { websiteId: null, status: "draft" }),
                           categoryId: e.target.value === "" ? null : Number(e.target.value),
                         },
-                      }))
+                      }));
                     }
                     disabled={!wpCats.length}
                   >
@@ -413,7 +413,7 @@ export default function AmazonSinglePage() {
                           setPublish((p) => ({
                             ...p,
                             schedule: { everyHours: Math.max(1, Number(e.target.value || 6)) },
-                          }))
+                          }));
                         }
                       />
                     </div>
@@ -439,7 +439,7 @@ export default function AmazonSinglePage() {
                           ...(p.blogger || { status: "draft" }),
                           blogId: e.target.value ? Number(e.target.value) : null,
                         },
-                      }))
+                      }));
                     }
                   >
                     <option value="">— Select —</option>
@@ -477,7 +477,7 @@ export default function AmazonSinglePage() {
                           setPublish((p) => ({
                             ...p,
                             schedule: { everyHours: Math.max(1, Number(e.target.value || 6)) },
-                          }))
+                          }));
                         }
                       />
                     </div>
