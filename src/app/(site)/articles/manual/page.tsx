@@ -25,7 +25,7 @@ export default function ManualArticlePage() {
   const [imageCredit, setImageCredit] = useState("");
 
   /* ===== Publish (union shape) ===== */
-  const [publish, setPublish] = useState<PublishTarget>({ mode: "none" });
+  const [publish, setPublish] = useState<PublishTarget>({ mode: "editor" });
 
   /* ===== UI ===== */
   const [busy, setBusy] = useState(false);

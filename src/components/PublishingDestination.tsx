@@ -2,128 +2,197 @@
 "use client";
 
 import React from "react";
-import type { PublishTarget, PublishStatus } from "@/lib/types";
+import {
+  PublishTarget,
+  LegacyPublishTarget,
+  toPublishTarget,
+  isPublishTarget,
+  PublishStatus,
+} from "@/lib/types";
+
+/**
+ * এই কম্পোনেন্ট এখন legacy + new—দুই শেপই গ্রহণ/রিটার্ন করে।
+ * তাই পেজগুলোতে পুরনো স্টেট (publish.wordpress...) থাকলেও বিল্ড ফেল হবে না।
+ */
 
 type Props = {
-  value: PublishTarget;
-  onChange: (next: PublishTarget) => void;
+  /** পুরনো বা নতুন যেকোনো শেপ */
+  value: PublishTarget | LegacyPublishTarget | undefined;
+  /**
+   * onChange: পেজে setPublish (useState setter) সরাসরি পাঠানো থাকলেও কাজ করবে,
+   * অথবা (next)=>{} ফাংশন দিলেও কাজ করবে।
+   */
+  onChange:
+    | ((next: PublishTarget | LegacyPublishTarget) => void)
+    | React.Dispatch<React.SetStateAction<PublishTarget | LegacyPublishTarget | undefined>>;
 };
 
-const statuses: PublishStatus[] = ["draft", "publish", "schedule"];
-
 export default function PublishingDestination({ value, onChange }: Props) {
+  const normalized = toPublishTarget(value);
+
+  // setter/callback—যেটাই পাঠানো হোক, নিরাপদে চালানো হবে
+  const emit = (next: PublishTarget) => {
+    if (typeof onChange === "function") {
+      try {
+        // যদি পেজে setter দেয়া থাকে (prev=>...), তাও হ্যান্ডেল করি
+        (onChange as any)(next);
+      } catch {
+        (onChange as any)(() => next);
+      }
+    }
+  };
+
+  const setMode = (mode: PublishTarget["mode"]) => {
+    if (mode === "wp") emit({ mode: "wp", siteId: null, categoryId: null, status: "draft" });
+    else if (mode === "blogger") emit({ mode: "blogger", blogId: null, status: "draft" });
+    else if (mode === "editor") emit({ mode: "editor" });
+    else emit({ mode: "none" });
+  };
+
+  const setStatus = (status: PublishStatus) => {
+    const v = normalized;
+    if (v.mode === "wp") emit({ ...v, status });
+    else if (v.mode === "blogger") emit({ ...v, status });
+    // editor/none হলে status প্রয়োগ নেই
+  };
+
+  const setWpSite = (siteId: number | null) => {
+    const v = normalized;
+    if (v.mode === "wp") emit({ ...v, siteId });
+    else emit({ mode: "wp", siteId, categoryId: null, status: "draft" });
+  };
+  const setWpCategory = (categoryId: number | null) => {
+    const v = normalized;
+    if (v.mode === "wp") emit({ ...v, categoryId });
+    else emit({ mode: "wp", siteId: null, categoryId, status: "draft" });
+  };
+
+  const setBlogger = (blogId: number | null) => {
+    const v = normalized;
+    if (v.mode === "blogger") emit({ ...v, blogId });
+    else emit({ mode: "blogger", blogId, status: "draft" });
+  };
+
+  const setEveryHours = (hrs: number | null) => {
+    const v = normalized;
+    if (v.mode === "wp") emit({ ...v, everyHours: hrs ?? null });
+    else if (v.mode === "blogger") emit({ ...v, everyHours: hrs ?? null });
+  };
+
+  /** UI — এখানে মিনিমাল কন্ট্রোল দেয়া হলো; তুমি আগের UI রেখে শুধু হ্যান্ডলারগুলো মেপ করে দিও */
   return (
-    <div className="space-y-4">
-      {/* প্ল্যাটফর্ম */}
-      <div className="grid md:grid-cols-3 gap-3">
-        <button
-          className={`border rounded px-3 py-2 ${value.mode === "none" ? "bg-gray-100" : ""}`}
-          onClick={() => onChange({ mode: "none" })}
+    <div className="space-y-3">
+      <div className="flex gap-2 items-center">
+        <label className="text-sm w-28">Platform</label>
+        <select
+          className="border rounded px-2 py-1"
+          value={normalized.mode}
+          onChange={(e) => setMode(e.target.value as PublishTarget["mode"])}
         >
-          None
-        </button>
-        <button
-          className={`border rounded px-3 py-2 ${value.mode === "editor" ? "bg-gray-100" : ""}`}
-          onClick={() => onChange({ mode: "editor" })}
-        >
-          Editor
-        </button>
-        <button
-          className={`border rounded px-3 py-2 ${value.mode === "wp" ? "bg-gray-100" : ""}`}
-          onClick={() =>
-            onChange({
-              mode: "wp",
-              siteId: value.mode === "wp" ? value.siteId : null,
-              categoryId: value.mode === "wp" ? value.categoryId : null,
-              status: value.mode === "wp" ? value.status : "draft",
-            })
-          }
-        >
-          WordPress
-        </button>
-        <button
-          className={`border rounded px-3 py-2 ${value.mode === "blogger" ? "bg-gray-100" : ""}`}
-          onClick={() =>
-            onChange({
-              mode: "blogger",
-              blogId: value.mode === "blogger" ? value.blogId : null,
-              status: value.mode === "blogger" ? value.status : "draft",
-            })
-          }
-        >
-          Blogger
-        </button>
+          <option value="none">None</option>
+          <option value="editor">Editor</option>
+          <option value="wp">WordPress</option>
+          <option value="blogger">Blogger</option>
+        </select>
       </div>
 
-      {/* কমন স্টেটাস (wp/blogger হলে দেখাই) */}
-      {(value.mode === "wp" || value.mode === "blogger") && (
-        <div className="flex items-center gap-3">
-          <label className="text-sm">Status</label>
-          <select
-            className="border rounded px-2 py-1"
-            value={value.status}
-            onChange={(e) => {
-              const s = e.target.value as PublishStatus;
-              if (value.mode === "wp") onChange({ ...value, status: s });
-              if (value.mode === "blogger") onChange({ ...value, status: s });
-            }}
-          >
-            {statuses.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </div>
+      {normalized.mode === "wp" && (
+        <>
+          <div className="flex gap-2 items-center">
+            <label className="text-sm w-28">WP Site ID</label>
+            <input
+              className="border rounded px-2 py-1 w-48"
+              type="number"
+              value={normalized.siteId ?? ""}
+              onChange={(e) => setWpSite(e.target.value === "" ? null : Number(e.target.value))}
+              placeholder="e.g. 12"
+            />
+          </div>
+
+          <div className="flex gap-2 items-center">
+            <label className="text-sm w-28">WP Category</label>
+            <input
+              className="border rounded px-2 py-1 w-48"
+              type="number"
+              value={normalized.categoryId ?? ""}
+              onChange={(e) =>
+                setWpCategory(e.target.value === "" ? null : Number(e.target.value))
+              }
+              placeholder="e.g. 5"
+            />
+          </div>
+
+          <div className="flex gap-2 items-center">
+            <label className="text-sm w-28">Status</label>
+            <select
+              className="border rounded px-2 py-1"
+              value={normalized.status}
+              onChange={(e) => setStatus(e.target.value as PublishStatus)}
+            >
+              <option value="draft">Draft</option>
+              <option value="publish">Publish</option>
+              <option value="schedule">Schedule</option>
+            </select>
+          </div>
+
+          {normalized.status === "schedule" && (
+            <div className="flex gap-2 items-center">
+              <label className="text-sm w-28">Every (hrs)</label>
+              <input
+                className="border rounded px-2 py-1 w-32"
+                type="number"
+                min={1}
+                value={normalized.everyHours ?? ""}
+                onChange={(e) =>
+                  setEveryHours(e.target.value === "" ? null : Number(e.target.value))
+                }
+              />
+            </div>
+          )}
+        </>
       )}
 
-      {/* wp extra */}
-      {value.mode === "wp" && (
-        <div className="grid md:grid-cols-2 gap-3">
-          <input
-            className="border rounded px-2 py-1"
-            type="number"
-            placeholder="WordPress Site ID"
-            value={value.siteId ?? ""}
-            onChange={(e) => onChange({ ...value, siteId: Number(e.target.value) || null })}
-          />
-          <input
-            className="border rounded px-2 py-1"
-            type="number"
-            placeholder="Category ID"
-            value={value.categoryId ?? ""}
-            onChange={(e) => onChange({ ...value, categoryId: Number(e.target.value) || null })}
-          />
-        </div>
-      )}
+      {normalized.mode === "blogger" && (
+        <>
+          <div className="flex gap-2 items-center">
+            <label className="text-sm w-28">Blog ID</label>
+            <input
+              className="border rounded px-2 py-1 w-48"
+              type="number"
+              value={normalized.blogId ?? ""}
+              onChange={(e) => setBlogger(e.target.value === "" ? null : Number(e.target.value))}
+              placeholder="e.g. 123456"
+            />
+          </div>
 
-      {/* blogger extra */}
-      {value.mode === "blogger" && (
-        <div>
-          <input
-            className="border rounded px-2 py-1"
-            type="number"
-            placeholder="Blogger Blog ID"
-            value={value.blogId ?? ""}
-            onChange={(e) => onChange({ ...value, blogId: Number(e.target.value) || null })}
-          />
-        </div>
-      )}
+          <div className="flex gap-2 items-center">
+            <label className="text-sm w-28">Status</label>
+            <select
+              className="border rounded px-2 py-1"
+              value={normalized.status}
+              onChange={(e) => setStatus(e.target.value as PublishStatus)}
+            >
+              <option value="draft">Draft</option>
+              <option value="publish">Publish</option>
+              <option value="schedule">Schedule</option>
+            </select>
+          </div>
 
-      {/* schedule extra (optionally) */}
-      {(value.mode === "wp" || value.mode === "blogger") && value.status === "schedule" && (
-        <div className="flex items-center gap-3">
-          <label className="text-sm">Every (hours)</label>
-          <input
-            className="border rounded px-2 py-1"
-            type="number"
-            min={1}
-            value={(value as any).everyHours ?? ""}
-            onChange={(e) => {
-              const hours = Number(e.target.value) || null;
-              if (value.mode === "wp") onChange({ ...value, everyHours: hours });
-              if (value.mode === "blogger") onChange({ ...value, everyHours: hours });
-            }}
-          />
-        </div>
+          {normalized.status === "schedule" && (
+            <div className="flex gap-2 items-center">
+              <label className="text-sm w-28">Every (hrs)</label>
+              <input
+                className="border rounded px-2 py-1 w-32"
+                type="number"
+                min={1}
+                value={normalized.everyHours ?? ""}
+                onChange={(e) =>
+                  setEveryHours(e.target.value === "" ? null : Number(e.target.value))
+                }
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

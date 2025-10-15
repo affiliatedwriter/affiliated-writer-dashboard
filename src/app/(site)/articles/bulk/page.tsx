@@ -1,4 +1,3 @@
-// src/app/(site)/articles/bulk/page.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -6,6 +5,7 @@ import ModelSelector from "@/components/ModelSelector";
 import PublishingDestination from "@/components/PublishingDestination";
 import api, { apiPost } from "@/lib/api";
 import type { PublishTarget, PublishStatus } from "@/lib/types";
+import { normalizePublishTarget, type LegacyPublishTarget } from "@/lib/types";
 
 type SchemaType = "Review" | "BlogPosting" | "Article";
 type ImageSource = "google" | "stock";
@@ -23,8 +23,13 @@ export default function BulkArticlePage() {
   const [imageSource, setImageSource] = useState<ImageSource>("google");
   const [imageCredit, setImageCredit] = useState("");
 
-  /* Publish unified (union) */
-  const [publish, setPublish] = useState<PublishTarget>({ mode: "none" });
+  /* Publish – use the **new** unified shape as the source of truth */
+  const [publish, setPublish] = useState<PublishTarget>({
+    mode: "editor",
+    wordpress: { websiteId: null, categoryId: null, status: "draft" },
+    blogger: { blogId: null, status: "draft" },
+    schedule: { everyHours: 6 },
+  });
 
   /* UI */
   const [busy, setBusy] = useState(false);
@@ -37,24 +42,22 @@ export default function BulkArticlePage() {
   );
   const count = keywordList.length;
 
-  /* Example: WP সাইট চেঞ্জ করলে category reset — সবসময় ফুল শেপ */
+  /* If some children still send legacy payloads, normalize here */
+  const onPublishChange = (next: PublishTarget | LegacyPublishTarget) => {
+    setPublish((prev) => normalizePublishTarget(next, prev));
+  };
+
+  /* Example: change WP site while keeping status */
   const onWpSiteChange = (wid: number | null) => {
-    // ক্যাটালগ/ড্রপডাউন চাইলে আলাদা স্টেট রাখতে পারেন
-    if (!wid) {
-      setPublish((prev) => {
-        if (prev.mode !== "wp") return prev;
-        // status রেখে দিচ্ছি, বাকি দুটো null
-        const status: PublishStatus = prev.status ?? "draft";
-        return { mode: "wp", siteId: null, categoryId: null, status };
-      });
-      return;
-    }
-    setPublish((prev) => {
-      const status: PublishStatus =
-        prev.mode === "wp" && prev.status ? prev.status : "draft";
-      const cat = prev.mode === "wp" ? prev.categoryId ?? null : null;
-      return { mode: "wp", siteId: wid, categoryId: cat, status };
-    });
+    setPublish((prev) => ({
+      ...prev,
+      mode: "wordpress",
+      wordpress: {
+        websiteId: wid,
+        categoryId: null,
+        status: prev.wordpress?.status ?? "draft",
+      },
+    }));
   };
 
   /* Validation */
@@ -62,10 +65,29 @@ export default function BulkArticlePage() {
     if (!count) return "Please add at least one keyword.";
     if (sections < 3 || sections > 20) return "Sections must be between 3 and 20.";
     if (faqs < 0 || faqs > 20) return "FAQs must be between 0 and 20.";
-    if ((publish.mode === "wp" || publish.mode === "blogger") && publish.status === "schedule") {
-      const hrs = (publish as any).everyHours ?? 0;
-      if (!hrs || hrs <= 0) return "Enter a valid schedule time in hours (> 0).";
+
+    if (publish.mode === "wordpress") {
+      const wid = publish.wordpress?.websiteId ?? null;
+      if (!wid) return "Choose a WordPress website.";
+      if (
+        (publish.wordpress?.status ?? "draft") === "schedule" &&
+        (publish.schedule?.everyHours ?? 0) <= 0
+      ) {
+        return "Enter a valid schedule time in hours (> 0).";
+      }
     }
+
+    if (publish.mode === "blogger") {
+      const bid = publish.blogger?.blogId ?? null;
+      if (!bid) return "Choose a Blogger blog.";
+      if (
+        (publish.blogger?.status ?? "draft") === "schedule" &&
+        (publish.schedule?.everyHours ?? 0) <= 0
+      ) {
+        return "Enter a valid schedule time in hours (> 0).";
+      }
+    }
+
     return null;
   };
 
@@ -89,7 +111,6 @@ export default function BulkArticlePage() {
           image_source: imageSource,
           image_credit: imageCredit || null,
         },
-        // backend এ একই শেপে পাঠান
         integrations: { publish },
       };
 
@@ -131,7 +152,9 @@ export default function BulkArticlePage() {
               />
               <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
                 <span>You can paste 1000+ lines — each line = 1 article</span>
-                <span>{count} keyword{count !== 1 && "s"}</span>
+                <span>
+                  {count} keyword{count !== 1 && "s"}
+                </span>
               </div>
             </div>
 
@@ -140,7 +163,9 @@ export default function BulkArticlePage() {
               <div>
                 <label className="block text-sm mb-1">Sections</label>
                 <input
-                  type="number" min={3} max={20}
+                  type="number"
+                  min={3}
+                  max={20}
                   value={sections}
                   onChange={(e) => setSections(Number(e.target.value))}
                   className="w-full rounded-lg border px-3 py-2"
@@ -149,7 +174,9 @@ export default function BulkArticlePage() {
               <div>
                 <label className="block text-sm mb-1">FAQs</label>
                 <input
-                  type="number" min={0} max={20}
+                  type="number"
+                  min={0}
+                  max={20}
                   value={faqs}
                   onChange={(e) => setFaqs(Number(e.target.value))}
                   className="w-full rounded-lg border px-3 py-2"
@@ -209,7 +236,7 @@ export default function BulkArticlePage() {
 
           {/* Publishing Settings */}
           <div className="rounded-xl border bg-white p-4">
-            <PublishingDestination value={publish} onChange={setPublish} />
+            <PublishingDestination value={publish} onChange={onPublishChange} />
             {/* উদাহরণ: কোথাও থেকে সাইট change করলে */}
             {/* <button onClick={() => onWpSiteChange(null)}>Reset WP Site</button> */}
           </div>
