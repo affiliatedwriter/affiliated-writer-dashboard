@@ -96,14 +96,19 @@ export default function AmazonSinglePage() {
   /* ---------- Load WP categories when site changes ---------- */
   useEffect(() => {
     const wid = publish.wordpress?.websiteId ?? null;
+
     if (!wid) {
       setWpCats([]);
       setPublish((p) => ({
         ...p,
-        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }), categoryId: null },
+        wordpress: {
+          ...(p.wordpress || { websiteId: null, status: "draft" }),
+          categoryId: null,
+        },
       }));
       return;
     }
+
     (async () => {
       try {
         const res = await api.get<{ categories?: WpCategory[]; data?: WpCategory[]; items?: WpCategory[] }>(
@@ -111,12 +116,12 @@ export default function AmazonSinglePage() {
         );
         const cats = (res?.categories ?? res?.data ?? res?.items ?? []) as WpCategory[];
         setWpCats(Array.isArray(cats) ? cats : []);
-        // prefill with site's default category, if any
+
         const site = wpSites.find((w) => w.id === wid);
         setPublish((p) => ({
           ...p,
           wordpress: {
-            ...(p.wordpress || { status: "draft", websiteId: wid }),
+            ...(p.wordpress || { status: "draft" }),
             websiteId: wid,
             categoryId: p.wordpress?.categoryId ?? site?.default_category_id ?? null,
           },
@@ -130,10 +135,19 @@ export default function AmazonSinglePage() {
 
   /* ---------- Helpers ---------- */
   const setWpStatus = (status: PublishStatus) =>
-    setPublish((p) => ({ ...p, wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }), status } }));
+    setPublish((p) => ({
+      ...p,
+      wordpress: {
+        ...(p.wordpress || { websiteId: null, categoryId: null }),
+        status,
+      },
+    }));
 
   const setBlogStatus = (status: PublishStatus) =>
-    setPublish((p) => ({ ...p, blogger: { ...(p.blogger || { blogId: null }), status } }));
+    setPublish((p) => ({
+      ...p,
+      blogger: { ...(p.blogger || { blogId: null }), status },
+    }));
 
   const validate = (): string | null => {
     if (!asin.trim() && !url.trim()) return "Provide ASIN or Product URL.";
@@ -343,15 +357,18 @@ export default function AmazonSinglePage() {
                   <select
                     className="w-full rounded-lg border px-3 py-2"
                     value={publish.wordpress?.websiteId ?? ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const wid = e.target.value ? Number(e.target.value) : null;
                       setPublish((p) => ({
                         ...p,
-                        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }) },
-                          websiteId: e.target.value ? Number(e.target.value) : null,
+                        wordpress: {
+                          ...(p.wordpress || { status: "draft" }),
+                          websiteId: wid,
                           categoryId: p.wordpress?.categoryId ?? null,
                         },
                       }));
-                    >
+                    }}
+                  >
                     <option value="">— Select —</option>
                     {wpSites.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -373,7 +390,7 @@ export default function AmazonSinglePage() {
                           ...(p.wordpress || { websiteId: null, status: "draft" }),
                           categoryId: e.target.value === "" ? null : Number(e.target.value),
                         },
-                      }));
+                      }))
                     }
                     disabled={!wpCats.length}
                   >
@@ -412,7 +429,7 @@ export default function AmazonSinglePage() {
                           setPublish((p) => ({
                             ...p,
                             schedule: { everyHours: Math.max(1, Number(e.target.value || 6)) },
-                          }));
+                          }))
                         }
                       />
                     </div>
@@ -438,8 +455,9 @@ export default function AmazonSinglePage() {
                           ...(p.blogger || { status: "draft" }),
                           blogId: e.target.value ? Number(e.target.value) : null,
                         },
-                      }));
-                    >
+                      }))
+                    }
+                  >
                     <option value="">— Select —</option>
                     {blogs.map((b) => (
                       <option key={b.id} value={b.id}>
@@ -475,7 +493,7 @@ export default function AmazonSinglePage() {
                           setPublish((p) => ({
                             ...p,
                             schedule: { everyHours: Math.max(1, Number(e.target.value || 6)) },
-                          }));
+                          }))
                         }
                       />
                     </div>

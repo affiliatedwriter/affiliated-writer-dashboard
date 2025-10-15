@@ -1,116 +1,88 @@
-// src/lib/types.ts
+// File: src/lib/types.ts
 
-/** ================= Common ================= */
+export type PublishMode = "editor" | "wordpress" | "blogger";
 export type PublishStatus = "draft" | "publish" | "schedule";
-export type PublishMode = "none" | "editor" | "wp" | "blogger";
 
-/** ------------ New (Normalized) shape ------------ */
-export type WpTarget = {
+export type PublishTarget = {
+  mode: PublishMode;
+  wordpress?: { websiteId: number | null; categoryId: number | null; status: PublishStatus };
+  blogger?: { blogId: number | null; status: PublishStatus };
+  schedule?: { everyHours: number };
+};
+
+/** ---- Legacy shapes (আগের প্রজেক্টের) ---- */
+export type LegacyWp = {
   mode: "wp";
   siteId: number | null;
   categoryId: number | null;
-  status: PublishStatus;
+  status: Exclude<PublishStatus, "schedule">; // তখন schedule আলাদা ফিল্ডে ছিল
   everyHours?: number | null;
 };
 
-export type BloggerTarget = {
+export type LegacyBlogger = {
   mode: "blogger";
   blogId: number | null;
-  status: PublishStatus;
   everyHours?: number | null;
+  status?: PublishStatus;
 };
 
-export type EditorTarget = {
-  mode: "editor";
-};
+export type LegacyNone = { mode: "none" };
 
-export type NoneTarget = {
-  mode: "none";
-};
+export type LegacyPublishTarget = LegacyWp | LegacyBlogger | LegacyNone;
 
-export type PublishTarget = WpTarget | BloggerTarget | EditorTarget | NoneTarget;
-
-/** ------------ Legacy (Older pages use this) ------------ */
-/** পুরনো পেজে publish.wordpress / publish.blogger ইত্যাদি থাকে।
- *  ফিল্ডগুলোকে optional রাখা হয়েছে যাতে আগের অসম্পূর্ণ shape-ও কমপাইল পাস করে।
- */
-export type LegacyWp = {
-  wordpress?: {
-    websiteId?: number | null;
-    categoryId?: number | null;
-    status: PublishStatus;
-    everyHours?: number | null;
-  };
-};
-export type LegacyBlogger = {
-  blogger?: {
-    blogId?: number | null;
-    status: PublishStatus;
-    everyHours?: number | null;
-  };
-};
-export type LegacyBase = {
-  /** পুরোনো কোডে schedule আলাদা থাকে */
-  schedule?: { everyHours?: number | null };
-};
-export type LegacyPublishTarget = LegacyBase & LegacyWp & LegacyBlogger & {
-  /** কিছু পেজে একদমই mode থাকে না; optional */
-  mode?: PublishMode;
-};
-
-/** ------------ Type Helpers ------------ */
-export function isPublishTarget(v: any): v is PublishTarget {
-  return v && typeof v === "object" && typeof v.mode === "string";
-}
-
-export function toPublishTarget(v: PublishTarget | LegacyPublishTarget | undefined): PublishTarget {
-  if (!v) return { mode: "none" };
-  if (isPublishTarget(v)) return v;
-
-  // Legacy → New normalize
-  if (v.wordpress) {
+/** ---- Normalizer: যেকোনো লিগ্যাসি/নতুন ইনপুট থেকে PublishTarget বানায় ---- */
+export function normalizePublishTarget(
+  next: PublishTarget | LegacyPublishTarget,
+  prev?: PublishTarget
+): PublishTarget {
+  // যদি ইতিমধ্যেই নতুন শেপ হয়, সরাসরি রিটার্ন (কপি)
+  if (typeof (next as any)?.mode === "string" && (next as any).mode !== "wp" && (next as any).mode !== "none") {
+    const t = next as PublishTarget;
     return {
-      mode: "wp",
-      siteId: v.wordpress.websiteId ?? null,
-      categoryId: v.wordpress.categoryId ?? null,
-      status: v.wordpress.status ?? "draft",
-      everyHours: v.wordpress.everyHours ?? v.schedule?.everyHours ?? null,
+      mode: t.mode,
+      wordpress: t.wordpress
+        ? {
+            websiteId: t.wordpress.websiteId ?? null,
+            categoryId: t.wordpress.categoryId ?? null,
+            status: t.wordpress.status ?? "draft",
+          }
+        : prev?.wordpress,
+      blogger: t.blogger
+        ? { blogId: t.blogger.blogId ?? null, status: t.blogger.status ?? "draft" }
+        : prev?.blogger,
+      schedule: t.schedule ?? prev?.schedule ?? { everyHours: 6 },
     };
   }
-  if (v.blogger) {
+
+  // লিগ্যাসি শেপ → নতুন শেপ
+  const legacy = next as LegacyPublishTarget;
+  if (legacy.mode === "wp") {
+    const hours = legacy.everyHours ?? prev?.schedule?.everyHours ?? 6;
+    return {
+      mode: "wordpress",
+      wordpress: {
+        websiteId: legacy.siteId ?? null,
+        categoryId: legacy.categoryId ?? null,
+        status: legacy.status ?? "draft",
+      },
+      blogger: prev?.blogger ?? { blogId: null, status: "draft" },
+      schedule: { everyHours: hours },
+    };
+  }
+  if (legacy.mode === "blogger") {
+    const hours = legacy.everyHours ?? prev?.schedule?.everyHours ?? 6;
     return {
       mode: "blogger",
-      blogId: v.blogger.blogId ?? null,
-      status: v.blogger.status ?? "draft",
-      everyHours: v.blogger.everyHours ?? v.schedule?.everyHours ?? null,
+      blogger: { blogId: legacy.blogId ?? null, status: legacy.status ?? "draft" },
+      wordpress: prev?.wordpress ?? { websiteId: null, categoryId: null, status: "draft" },
+      schedule: { everyHours: hours },
     };
   }
-  return { mode: v.mode ?? "none" };
-}
-
-/** নতুন → Legacy (যদি পুরনো payload দরকার হয়) */
-export function toLegacy(v: PublishTarget): LegacyPublishTarget {
-  switch (v.mode) {
-    case "wp":
-      return {
-        wordpress: {
-          websiteId: v.siteId ?? null,
-          categoryId: v.categoryId ?? null,
-          status: v.status,
-          everyHours: v.everyHours ?? null,
-        },
-      };
-    case "blogger":
-      return {
-        blogger: {
-          blogId: v.blogId ?? null,
-          status: v.status,
-          everyHours: v.everyHours ?? null,
-        },
-      };
-    case "editor":
-      return { mode: "editor" };
-    default:
-      return { mode: "none" };
-  }
+  // mode: "none" বা অজানা কিছু হলে editor-এ নামিয়ে দিই
+  return {
+    mode: "editor",
+    wordpress: prev?.wordpress ?? { websiteId: null, categoryId: null, status: "draft" },
+    blogger: prev?.blogger ?? { blogId: null, status: "draft" },
+    schedule: prev?.schedule ?? { everyHours: 6 },
+  };
 }

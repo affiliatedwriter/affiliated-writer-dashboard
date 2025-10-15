@@ -1,4 +1,4 @@
-// File: src/app/articles/amazon/page.tsx
+// File: src/app/(site)/articles/amazon/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -25,7 +25,7 @@ type AmazonApi = { id: number; title: string; partnerTag?: string; country?: str
 type PublishMode = "editor" | "wordpress" | "blogger";
 type PublishStatus = "draft" | "publish" | "schedule";
 
-/** 👉 গুরুত্বপূর্ণ: number, 0 মানে “unset”. */
+/** number, 0 মানে “unset” (TS-safe সংখ্যা) */
 type PublishTarget = {
   mode: PublishMode;
   wordpress?: { websiteId: number; categoryId: number; status: PublishStatus };
@@ -53,9 +53,9 @@ export default function AmazonBulkPage() {
   const [slugMode, setSlugMode] = useState<SlugMode>("keyword");
   const [schema, setSchema] = useState<SchemaType>("Review");
 
-  // Meta description (new)
+  // Meta description
   const [includeMeta, setIncludeMeta] = useState<boolean>(true);
-  const [metaNote, setMetaNote] = useState<string>(""); // optional guidance
+  const [metaNote, setMetaNote] = useState<string>("");
 
   /* CTA */
   const [ctaStyle, setCtaStyle] = useState<string>("solid");
@@ -69,7 +69,9 @@ export default function AmazonBulkPage() {
 
   // Fallback (only tracking id)
   const [fallbackTag, setFallbackTag] = useState<string>("");
-  const [fallbackCountry, setFallbackCountry] = useState<string>("amazon.com - United States (US)");
+  const [fallbackCountry, setFallbackCountry] = useState<string>(
+    "amazon.com - United States (US)"
+  );
 
   /* Filters */
   const [perArticle, setPerArticle] = useState<number>(10);
@@ -81,8 +83,7 @@ export default function AmazonBulkPage() {
   /* Publish */
   const [publish, setPublish] = useState<PublishTarget>({
     mode: "editor",
-    /** 0 = unset (TS-safe) */
-    wordpress: { websiteId: 0, categoryId: 0, status: "draft" },
+    wordpress: { websiteId: 0, categoryId: 0, status: "draft" }, // সংখ্যায় 0 = unset
     blogger: { blogId: null, status: "draft" },
     schedule: { everyHours: 6 },
   });
@@ -114,13 +115,13 @@ export default function AmazonBulkPage() {
   useEffect(() => {
     const wid = publish.wordpress?.websiteId ?? 0;
 
-    // wid না থাকলে — টাইপ-সেইফ fallback (number)
+    // wid না থাকলে — টাইপ-সেইফ fallback
     if (!wid) {
       setWpCats([]);
       setPublish((p) => ({
         ...p,
         wordpress: { websiteId: 0, categoryId: 0, status: "draft" },
-      }));;
+      }));
       return;
     }
 
@@ -137,12 +138,13 @@ export default function AmazonBulkPage() {
           ...p,
           wordpress: {
             websiteId: wid,
-            categoryId: p.wordpress?.categoryId && p.wordpress.categoryId > 0
-              ? p.wordpress.categoryId
-              : defaultCat,
+            categoryId:
+              p.wordpress?.categoryId && p.wordpress.categoryId > 0
+                ? p.wordpress.categoryId
+                : defaultCat,
             status: p.wordpress?.status ?? "draft",
           },
-        }));;
+        }));
       } catch {
         setWpCats([]);
       }
@@ -187,9 +189,12 @@ export default function AmazonBulkPage() {
     setPublish((p) => ({
       ...p,
       wordpress: { ...(p.wordpress || { websiteId: 0, categoryId: 0 }), status },
-    }));;
+    }));
   const setBlogStatus = (status: PublishStatus) =>
-    setPublish((p) => ({ ...p, blogger: { ...(p.blogger || { blogId: null }), status } }));;
+    setPublish((p) => ({
+      ...p,
+      blogger: { ...(p.blogger || { blogId: null }), status },
+    }));
 
   /* Start job */
   const start = async () => {
@@ -360,9 +365,7 @@ export default function AmazonBulkPage() {
                 <select
                   className="w-full rounded-lg border px-3 py-2"
                   value={apiId}
-                  onChange={(e) =>
-                    setApiId(e.target.value ? Number(e.target.value) : "")
-                  }
+                  onChange={(e) => setApiId(e.target.value ? Number(e.target.value) : "")}
                 >
                   <option value="">— Choose API —</option>
                   {amazonApis.map((a) => (
@@ -374,17 +377,14 @@ export default function AmazonBulkPage() {
                 </select>
                 {!amazonApis.length && (
                   <p className="text-xs text-amber-600 mt-1">
-                    No saved Amazon API found. You can add one from{" "}
-                    <b>Website And Api → Amazon API</b>.
+                    No saved Amazon API found. You can add one from <b>Website And Api → Amazon API</b>.
                   </p>
                 )}
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Amazon Store/Tracking ID
-                  </label>
+                  <label className="block text-sm font-medium mb-1">Amazon Store/Tracking ID</label>
                   <input
                     className="w-full rounded-lg border px-3 py-2"
                     value={fallbackTag}
@@ -406,8 +406,7 @@ export default function AmazonBulkPage() {
                   </select>
                 </div>
                 <div className="md:col-span-2 text-xs text-amber-600">
-                  Without Amazon API, system will use tracking ID only and charge{" "}
-                  <b>+100 credits</b> per article.
+                  Without Amazon API, system will use tracking ID only and charge <b>+100 credits</b> per article.
                 </div>
               </div>
             )}
@@ -429,9 +428,7 @@ export default function AmazonBulkPage() {
                 <label className="block text-sm mb-1">Product availability</label>
                 <select
                   value={availability}
-                  onChange={(e) =>
-                    setAvailability(e.target.value as Availability)
-                  }
+                  onChange={(e) => setAvailability(e.target.value as Availability)}
                   className="w-full rounded-lg border px-3 py-2"
                 >
                   <option value="any">Any</option>
@@ -487,7 +484,7 @@ export default function AmazonBulkPage() {
               {(["wordpress", "blogger", "editor"] as PublishMode[]).map((m) => (
                 <button
                   key={m}
-                  onClick={() => setPublish((p) => ({ ...p, mode: m }));}
+                  onClick={() => setPublish((p) => ({ ...p, mode: m }))}
                   className={`rounded border px-3 py-1.5 text-sm ${
                     publish.mode === m ? "bg-gray-100" : "hover:bg-gray-50"
                   }`}
@@ -501,21 +498,21 @@ export default function AmazonBulkPage() {
             {publish.mode === "wordpress" && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Select WordPress Website
-                  </label>
+                  <label className="block text-sm font-medium mb-1">Select WordPress Website</label>
                   <select
                     className="w-full rounded-lg border px-3 py-2"
                     value={publish.wordpress?.websiteId ? publish.wordpress.websiteId : ""}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const wid = e.target.value ? Number(e.target.value) : 0;
                       setPublish((p) => ({
                         ...p,
-                        wordpress: { ...(p.wordpress || { websiteId: null, categoryId: null, status: "draft" }) },
-                          websiteId: e.target.value ? Number(e.target.value) : 0,
+                        wordpress: {
+                          ...(p.wordpress || { websiteId: 0, categoryId: 0, status: "draft" }),
+                          websiteId: wid,
                           categoryId: p.wordpress?.categoryId ?? 0,
                         },
                       }));
-                    }
+                    }}
                   >
                     <option value="">— Select —</option>
                     {wpSites.map((w) => (
@@ -527,9 +524,7 @@ export default function AmazonBulkPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Select Category
-                  </label>
+                  <label className="block text-sm font-medium mb-1">Select Category</label>
                   <select
                     className="w-full rounded-lg border px-3 py-2"
                     value={publish.wordpress?.categoryId ? publish.wordpress.categoryId : ""}
@@ -537,10 +532,10 @@ export default function AmazonBulkPage() {
                       setPublish((p) => ({
                         ...p,
                         wordpress: {
-                          ...(p.wordpress || { websiteId: 0, status: "draft" }),
+                          ...(p.wordpress || { websiteId: 0, categoryId: 0, status: "draft" }),
                           categoryId: e.target.value ? Number(e.target.value) : 0,
                         },
-                      }));
+                      }))
                     }
                     disabled={!wpCats.length}
                   >
@@ -555,9 +550,7 @@ export default function AmazonBulkPage() {
 
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Post Status
-                    </label>
+                    <label className="block text-sm font-medium mb-1">Post Status</label>
                     <select
                       className="w-full rounded-lg border px-3 py-2"
                       value={publish.wordpress?.status ?? "draft"}
@@ -571,9 +564,7 @@ export default function AmazonBulkPage() {
 
                   {publish.wordpress?.status === "schedule" && (
                     <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Every (hours)
-                      </label>
+                      <label className="block text-sm font-medium mb-1">Every (hours)</label>
                       <input
                         type="number"
                         min={1}
@@ -585,7 +576,7 @@ export default function AmazonBulkPage() {
                             schedule: {
                               everyHours: Math.max(1, Number(e.target.value || 6)),
                             },
-                          }));
+                          }))
                         }
                       />
                     </div>
@@ -598,9 +589,7 @@ export default function AmazonBulkPage() {
             {publish.mode === "blogger" && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Select Blogger Blog
-                  </label>
+                  <label className="block text-sm font-medium mb-1">Select Blogger Blog</label>
                   <select
                     className="w-full rounded-lg border px-3 py-2"
                     value={publish.blogger?.blogId ?? ""}
@@ -611,7 +600,7 @@ export default function AmazonBulkPage() {
                           ...(p.blogger || { status: "draft" }),
                           blogId: e.target.value ? Number(e.target.value) : (null as any),
                         },
-                      }));
+                      }))
                     }
                   >
                     <option value="">— Select —</option>
@@ -625,9 +614,7 @@ export default function AmazonBulkPage() {
 
                 <div className="grid md:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium mb-1">
-                      Post Status
-                    </label>
+                    <label className="block text-sm font-medium mb-1">Post Status</label>
                     <select
                       className="w-full rounded-lg border px-3 py-2"
                       value={publish.blogger?.status ?? "draft"}
@@ -641,9 +628,7 @@ export default function AmazonBulkPage() {
 
                   {publish.blogger?.status === "schedule" && (
                     <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Every (hours)
-                      </label>
+                      <label className="block text-sm font-medium mb-1">Every (hours)</label>
                       <input
                         type="number"
                         min={1}
@@ -655,7 +640,7 @@ export default function AmazonBulkPage() {
                             schedule: {
                               everyHours: Math.max(1, Number(e.target.value || 6)),
                             },
-                          }));
+                          }))
                         }
                       />
                     </div>
@@ -677,8 +662,7 @@ export default function AmazonBulkPage() {
           <div className="rounded-xl border bg-white p-4">
             <h4 className="font-semibold mb-2">Ready?</h4>
             <p className="text-sm text-gray-600">
-              Click start to create article jobs. Images are taken from Amazon
-              automatically.
+              Click start to create article jobs. Images are taken from Amazon automatically.
             </p>
             <button
               onClick={start}
